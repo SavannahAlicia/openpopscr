@@ -73,7 +73,8 @@ ScrData <- R6Class("ScrData",
     initialize = function(capthist, 
                           mesh, 
                           time = NULL, 
-                          primary = NULL) {
+                          primary = NULL,
+                          userdistmat = NULL) {
       private$check_input(capthist, mesh, time, primary) 
       ## detectors
       private$detector_type_ <- switch(attr(traps(capthist), "detector")[1], 
@@ -139,8 +140,14 @@ ScrData <- R6Class("ScrData",
       private$cov_type_ <- c(private$cov_type_, "m")
       private$cov_type_ <- c(private$cov_type_, "m")
       if (!(private$detector_type_ %in% 1:7)) stop("Detector type not implemented.")
-      ## compute distance trap-to-mesh
-      self$calc_distances()
+
+      if (is.null(userdistmat)){
+        ## compute distance trap-to-mesh
+        self$calc_distances()
+      } else {
+        private$distances_ <- userdistmat
+      }
+
       ## compute distance centroid-to-mesh
       private$ibuf_ <- attributes(mesh)$ibuffer
       private$make_imesh()
