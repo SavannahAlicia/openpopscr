@@ -271,7 +271,7 @@ simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, m
   } else {
     model2D <- "poisson"
   }
-  D <- D / 100
+  D <- D / 100 #assumes mesh size?
   phi <- par$phi
   if (length(phi) == 1) phi <- rep(phi, n_occasions - 1)
   beta <- par$beta
@@ -281,31 +281,18 @@ simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, m
   pop <- sim.popn(D = D, core = mesh, model2D = model2D, Ndist = "poisson", buffertype = "rect")
   if (print) cat("done\n")
   birth_time <- sample(1:n_occasions, size = nrow(pop), prob = beta, replace = TRUE)
-  if (!is.null(primary)) {
-    birth_time <- primary[birth_time]
-    birth_time <- match(birth_time, primary)
-  }
   dt <- diff(time)
-  phi <- phi^dt
   life <- matrix(0, nr = nrow(pop), ncol = n_occasions) 
   life[birth_time == 1, 1] <- 1
-  diffprim <- diff(primary)
-  if (all(diffprim == 0)) {
-    diffprim <- rep(1, n_occasions - 1)
-  } else {
-    diffprim <- diff(primary)
-  }
-  for (k in 2:n_occasions) {
-    if (diffprim[k - 1] > 0.5) {
-      life[birth_time < k,k] <- rbinom(sum(birth_time < k), 1, phi[k - 1]) 
-    } else {
-      life[birth_time < k,k] <- life[birth_time < k, k - 1]
-    }
+  for (k in 2:n_occasions){
+    alives <- life[,k-1] == 1
+    life[alives, k] <- rbinom(sum(alives), 1, phi[k - 1]) 
     life[birth_time == k, k] <- 1
   }
+  
   lambda0 <- par$lambda0
   sigma <- par$sigma
-  nocc <- n_occasions
+  nocc <- dim(m$data()$capthist())[2]
   nsess <- 1
   popn <- pop 
   trapn <- detectors
@@ -315,8 +302,9 @@ simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, m
     poplist[[1]] <- pop
     traplist <- vector(mode = "list", length = n_occasions)
     traplist[[1]] <- detectors
-    if (is.null(usage(detectors))) usage(detectors) <- matrix(1, nr = nrow(detectors), nc = n_occasions)
-    usage(traplist[[1]]) <- matrix(usage(detectors)[,1], nr = nrow(detectors), nc = 1)
+    if (is.null(usage(detectors))) usage(detectors) <- matrix(1, nr = nrow(detectors), nc = nocc)
+    usecols <- which(primary == 1)
+    usage(traplist[[1]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = length(usecols))
     for (k in 2:n_occasions) {
       for (i in 1:nrow(pop)) {
         dist <- pop[i,1] - mesh[,1]
@@ -328,11 +316,11 @@ simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, m
       }
       poplist[[k]] <- pop
       traplist[[k]] <- detectors 
-      usage(traplist[[k]]) <- matrix(usage(detectors)[,k], nr = nrow(detectors), nc = 1)
+      usecols <- which(primary == k)
+      usage(traplist[[k]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = 1)
     }
     popn <- poplist
     trapn <- traplist
-    nocc <- 1 
     nsess <- n_occasions
     if (print) cat("done\n")
   } 
@@ -345,7 +333,7 @@ simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, m
                                             detectfn = "HHN", 
                                             detectpar = list(lambda0 = lambda0, 
                                                              sigma = sigma), 
-                                            noccasions = nocc, 
+                                            noccasions = length(which(primary == k)), 
                                             renumber = FALSE)
     }
     capture_history <- join(capturehistories)
@@ -368,8 +356,9 @@ simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, m
   birth_time <- birth_time[ids]
   seen <- rep(TRUE, n)
   for (i in seq(n)) {
+    print(i)
     life[i, birth_time[i]:n_occasions] <- cumprod(life[i, birth_time[i]:n_occasions])
-    capture_history[i, ,] <- diag(life[i,]) %*% capture_history[i, ,]
+    capture_history[i, ,] <- diag(life[i,][primary]) %*% capture_history[i, ,]
     if (sum(capture_history[i, ,]) == 0) seen[i] <- FALSE
   } 
   if (!is.null(attr(capture_history, "detectedXY"))) { 
