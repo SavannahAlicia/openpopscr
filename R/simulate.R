@@ -242,7 +242,8 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #' Simulate SCR open population Jolly-Seber survey 
 #'
 #' @param par true parameters, named list of lambda0, sigma, phi, beta
-#' @param n_occasions total number of occasions in survey 
+#' @param n_occasions total number of primary occasions in survey 
+#' @param n_sec_occasions number of secondary occasions in survey
 #' @param detectors secr trap object
 #' @param mesh secr mesh object
 #' @param ihp relative density at each mesh point for inhomogeneous (so density at point = D*ihp)
@@ -254,7 +255,7 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #'
 #' @return ScrData object 
 #' @export
-simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, seed = NULL, print = TRUE) {
+simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, seed = NULL, print = TRUE) {
   if (!is.null(seed)) set.seed(seed)
   if (is.null(time)) {
     if (is.null(primary)) {
@@ -292,7 +293,7 @@ simulate_js_openscr <- function(par, n_occasions, detectors, mesh, ihp = NULL, m
   
   lambda0 <- par$lambda0
   sigma <- par$sigma
-  nocc <- dim(m$data()$capthist())[2]
+  nocc <- n_sec_occasions
   nsess <- 1
   popn <- pop 
   trapn <- detectors
