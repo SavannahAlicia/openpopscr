@@ -357,7 +357,6 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   birth_time <- birth_time[ids]
   seen <- rep(TRUE, n)
   for (i in seq(n)) {
-    print(i)
     life[i, birth_time[i]:n_occasions] <- cumprod(life[i, birth_time[i]:n_occasions])
     capture_history[i, ,] <- diag(life[i,][primary]) %*% capture_history[i, ,]
     if (sum(capture_history[i, ,]) == 0) seen[i] <- FALSE
