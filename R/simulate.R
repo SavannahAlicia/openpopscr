@@ -1,3 +1,133 @@
+#' Noneuclidean distances for simulated population and 
+#' 
+#' @param trans_poly SpatialPolygons object that defines water
+#' @param popgrid dataframe with x and y columns that is possible hrc grid  
+#'  
+#' @return transition layer
+#' @export     
+pop_netrans <- function(trans_poly, pop_grid){
+  pop_pts <- st_as_sf(x = pop_grid, coords = c("x","y"), crs = crs(trans_poly))
+  #then remaining traps
+  connects <- nngeo::st_connect(poppts, st_as_sf(trans_poly))
+  connects <- connects[ which(as.numeric(st_length(connects)) > 0.001)]
+  fs <- seq(1:length(connects))*2 -1
+  boxify <- function(f, connects, poly) {
+    first <- st_coordinates(connects)[f,1:2]
+    last <- st_coordinates(connects)[(f+1),1:2]
+    #first make sure no pts are equal
+    if(any(first == last)){
+      print(paste("Pts directly in a line or identical ", f))
+    }
+    slope <- (first[2]-last[2])/(first[1]-last[1])
+    invslope <- -1/slope
+    b <- first[2] - slope*first[1]
+    offset = 100
+    
+    #if first pt is to the left of last pt
+    if (first[1] < last[1]){
+      left <- first
+      right <- last
+    } else {
+      left <- last
+      right <- first
+    }
+    #finds two points that are offset away from pt on a line of slope 
+    pt_away <- function(pt, offset, slope){
+      newpt1 <- c(X = pt[1] + sqrt((offset^2)/(slope^2 + 1)), 
+                  Y = sum(slope * sqrt((offset^2)/(slope^2 +1)), pt[2], na.rm = T))
+      newpt2 <- c(X = pt[1] - sqrt((offset^2)/(slope^2 + 1)), 
+                  Y = sum(-(slope * sqrt((offset^2)/(slope^2 +1))), pt[2], na.rm = T))
+      rbind(newpt1, newpt2)
+    }
+    left_2 <- pt_away(left, offset, slope)
+    #if identical (vertical line)
+    if (all(left_2[1,] == left_2[2,])){
+      #just double check vertical line
+      if(left[1] == right[1]){
+        bottom <- c(X = left[1], Y = min(left[2],right[2]))
+        bottom_2 <- c(X = bottom[1], Y = bottom[2] - offset)
+        Ss <- pt_away(bottom_2, offset, invslope)
+        SW <- Ss[which(Ss[,1] == min(Ss[,1])),]
+        SE <- Ss[which(Ss[,1] == max(Ss[,1])),]
+        top <- c(X = left[1], Y = max(left[2], right[2]))
+        top_2 <- c(X = top[1], Y = top[2] + offset)
+        Ns <- pt_away(top_2, offset, invslope)
+        NW <- Ns[which(Ns[,1] == min(Ns[,1])),]
+        NE <- Ns[which(Ns[,1] == max(Ns[,1])),]
+      }
+    } else {
+      #keep whichever is smaller x (more left)
+      left_2 <- left_2[which(left_2[,1] == min(left_2[,1])),]
+      Ws <- pt_away(left_2, offset, invslope)
+      NW <- Ws[which(Ws[,2] == max(Ws[,2])),]
+      SW <- Ws[which(Ws[,2] == min(Ws[,2])),]
+      right_2 <- pt_away(right, offset, slope)
+      #keep whichever is larger x (more right)
+      right_2 <- right_2[which(right_2[,1] == max(right_2[,1])),]
+      Es <- pt_away(right_2, offset, invslope)
+      NE <- Es[which(Es[,2] == max(Es[,2])),]
+      SE <- Es[which(Es[,2] == min(Es[,2])),]
+    }
+    box<- as_Spatial(st_sfc(st_polygon(list(rbind(
+      NW,
+      NE,
+      SE,
+      SW,
+      NW
+    ))),
+    crs = st_crs(st_as_sf(poly))))
+    return(box)
+  }
+  conn_polys_ls <- lapply(X = as.list(fs), FUN = boxify,
+                          connects = connects, poly = trans_poly)
+  connect_polys <- do.call(bind, conn_polys_ls)
+  out_poly <- bind(connect_polys, new_poly)
+  r <- raster(ncol = 1000, nrow = 1000)
+  extent(r) <- extent(out_poly)
+  rp <- rasterize(out_poly, r)
+  values(rp)[!is.na(values(rp))] = 1
+  rp_df <- as.data.frame(as(rp, "SpatialPixelsDataFrame"))
+  colnames(rp_df) <- c("value", "x", "y")
+  trans <- transition(rp, mean, directions = 16)
+  return(trans)
+}
+  
+#' Get distance
+#' 
+#' @param m row of mesh
+#' @param j row of traps
+#' @param trans transition layer
+#' @param poly SpatialPolygon to reference crs
+#' @param mesh mesh data.frame
+#' @param traps traps data.frame
+try_dist <- function(m, j, trans, poly, mesh, traps){
+  get_dist <- function(m, j, trans, poly, mesh, traps){
+    if (dist(rbind(mesh[m,1:2], traps[j,])) < 2) {
+      distance = 0
+    } else {
+      path <- shortestPath(x = trans, 
+                           origin = as.matrix(mesh.[m, c("x","y")]), 
+                           goal = as.matrix(traps.[j, c("x","y")]),
+                           output = "SpatialLines")
+      crs(path) <- crs(poly)
+      distance <- gLength(path)
+    }
+    return(distance)
+  }
+  out <- tryCatch(
+    {
+      get_dist(m, j, trans, poly, mesh, traps)
+    },
+    error=function(e){
+      return(NA)
+    },
+    warning=function(w){
+      return(NA)
+    }
+  )
+  return(out)
+}
+
 #' Simulate Spatial Capture-Recapture data
 #'
 #' @param par named vector of D, lambda0, sigma parameters and sd, if movement is desired 
@@ -255,7 +385,7 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #'
 #' @return ScrData object 
 #' @export
-simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, seed = NULL, print = TRUE) {
+simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, non_euc = NULL, seed = NULL, print = TRUE) {
   if (!is.null(seed)) set.seed(seed)
   if (is.null(time)) {
     if (is.null(primary)) {
@@ -299,20 +429,29 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   trapn <- detectors
   if (move) {
     if (print) cat("Simulating moving activity centres......")
+    if(!is.null(non_euc)){
+      #need to snap population locations to grid of possible hrcs for 
+      #precalculated noneuclidean distance matrix
+    }
     poplist <- vector(mode = "list", length = n_occasions)
     poplist[[1]] <- pop
     traplist <- vector(mode = "list", length = n_occasions)
     traplist[[1]] <- detectors
-    if (is.null(usage(detectors))) usage(detectors) <- matrix(1, nr = nrow(detectors), nc = nocc)
+    if (is.null(usage(detectors))){ usage(detectors) <- matrix(1, nr = nrow(detectors), nc = nocc)}
     usecols <- which(primary == 1)
     usage(traplist[[1]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = length(usecols))
     for (k in 2:n_occasions) {
       for (i in 1:nrow(pop)) {
-        dist <- pop[i,1] - mesh[,1]
-        pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
-        dist2 <- pop[i,2] - mesh[,2]
-        pr2 <- dnorm(dist2, 0, par$sd * sqrt(dt[k-1]))
-        pr <- pr*pr2 / sum(pr*pr2)
+        #note this is euclidean distance. for noneuclidean, need a transition layer
+        if(is.null(non_euc)){
+          dist <- pop[i,1] - mesh[,1]
+          pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
+          dist2 <- pop[i,2] - mesh[,2]
+          pr2 <- dnorm(dist2, 0, par$sd * sqrt(dt[k-1]))
+        } else {
+         #reference noneuclidean distance matrix
+        }
+         pr <- pr*pr2 / sum(pr*pr2)
         pop[i,] <- mesh[sample(1:nrow(mesh), size = 1, prob = pr),]    
       }
       poplist[[k]] <- pop
