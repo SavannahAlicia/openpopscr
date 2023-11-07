@@ -380,12 +380,13 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #' @param move if TRUE, activity centres move and par$sd must be specified 
 #' @param time vector with time units between occasions 
 #' @param primary index of which primary each occasion is allocated to 
+#' @param userdist user-defined distance matrix (k (trap) rows m columns)
 #' @param seed seed to set before simulating 
 #' @param print if TRUE, useful output is printed 
 #'
 #' @return ScrData object 
 #' @export
-simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, non_euc = NULL, seed = NULL, print = TRUE) {
+simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, userdist = NULL, seed = NULL, print = TRUE) {
   if (!is.null(seed)) set.seed(seed)
   if (is.null(time)) {
     if (is.null(primary)) {
@@ -429,7 +430,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   trapn <- detectors
   if (move) {
     if (print) cat("Simulating moving activity centres......")
-    if(!is.null(non_euc)){
+    if(!is.null(userdist)){
       #need to snap population locations to grid of possible hrcs for 
       #precalculated noneuclidean distance matrix
     }
@@ -442,8 +443,8 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
     usage(traplist[[1]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = length(usecols))
     for (k in 2:n_occasions) {
       for (i in 1:nrow(pop)) {
-        #note this is euclidean distance. for noneuclidean, need a transition layer
-        if(is.null(non_euc)){
+        #note this is euclidean distance
+        if(is.null(userdist)){
           dist <- pop[i,1] - mesh[,1]
           pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
           dist2 <- pop[i,2] - mesh[,2]
@@ -457,7 +458,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
       poplist[[k]] <- pop
       traplist[[k]] <- detectors 
       usecols <- which(primary == k)
-      usage(traplist[[k]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = 1)
+      usage(traplist[[k]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = length(usecols))
     }
     popn <- poplist
     trapn <- traplist
@@ -473,6 +474,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                             detectfn = "HHN", 
                                             detectpar = list(lambda0 = lambda0, 
                                                              sigma = sigma), 
+                                            userdist = userdist,
                                             noccasions = length(which(primary == k)), 
                                             renumber = FALSE)
     }
@@ -483,6 +485,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                     detectfn = "HHN", 
                                     detectpar = list(lambda0 = lambda0, 
                                                      sigma = sigma), 
+                                    userdist = userdist,
                                     noccasions = nocc,
                                     nsession = nsess, 
                                     renumber = FALSE)
