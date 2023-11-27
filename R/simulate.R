@@ -92,41 +92,41 @@ pop_netrans <- function(trans_poly, pop_grid){
   return(trans)
 }
   
-#' Get distance
-#' 
-#' @param m row of mesh
-#' @param j row of traps
-#' @param trans transition layer
-#' @param poly SpatialPolygon to reference crs
-#' @param mesh mesh data.frame
-#' @param traps traps data.frame
-try_dist <- function(m, j, trans, poly, mesh, traps){
-  get_dist <- function(m, j, trans, poly, mesh, traps){
-    if (dist(rbind(mesh[m,1:2], traps[j,])) < 2) {
-      distance = 0
-    } else {
-      path <- shortestPath(x = trans, 
-                           origin = as.matrix(mesh.[m, c("x","y")]), 
-                           goal = as.matrix(traps.[j, c("x","y")]),
-                           output = "SpatialLines")
-      crs(path) <- crs(poly)
-      distance <- gLength(path)
-    }
-    return(distance)
-  }
-  out <- tryCatch(
-    {
-      get_dist(m, j, trans, poly, mesh, traps)
-    },
-    error=function(e){
-      return(NA)
-    },
-    warning=function(w){
-      return(NA)
-    }
-  )
-  return(out)
-}
+#' #' Get distance
+#' #' 
+#' #' @param m row of mesh
+#' #' @param j row of traps
+#' #' @param trans transition layer
+#' #' @param poly SpatialPolygon to reference crs
+#' #' @param mesh mesh data.frame
+#' #' @param traps traps data.frame
+#' try_dist <- function(m, j, trans, poly, mesh, traps){
+#'   get_dist <- function(m, j, trans, poly, mesh, traps){
+#'     if (dist(rbind(mesh[m,1:2], traps[j,])) < 2) {
+#'       distance = 0
+#'     } else {
+#'       path <- shortestPath(x = trans, 
+#'                            origin = as.matrix(mesh.[m, c("x","y")]), 
+#'                            goal = as.matrix(traps.[j, c("x","y")]),
+#'                            output = "SpatialLines")
+#'       crs(path) <- crs(poly)
+#'       distance <- gLength(path)
+#'     }
+#'     return(distance)
+#'   }
+#'   out <- tryCatch(
+#'     {
+#'       get_dist(m, j, trans, poly, mesh, traps)
+#'     },
+#'     error=function(e){
+#'       return(NA)
+#'     },
+#'     warning=function(w){
+#'       return(NA)
+#'     }
+#'   )
+#'   return(out)
+#' }
 
 #' Simulate Spatial Capture-Recapture data
 #'
@@ -380,13 +380,13 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #' @param move if TRUE, activity centres move and par$sd must be specified 
 #' @param time vector with time units between occasions 
 #' @param primary index of which primary each occasion is allocated to 
-#' @param userdist user-defined distance matrix (k (trap) rows m columns)
+#' @param ne_trans user created transition layer for noneuclidean distances
 #' @param seed seed to set before simulating 
 #' @param print if TRUE, useful output is printed 
 #'
 #' @return ScrData object 
 #' @export
-simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, userdist = NULL, seed = NULL, print = TRUE) {
+simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, ne_trans = NULL, seed = NULL, print = TRUE) {
   if (!is.null(seed)) set.seed(seed)
   if (is.null(time)) {
     if (is.null(primary)) {
@@ -394,6 +394,14 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
     } else {
       time <- 1:max(primary)
     }
+  }
+  if(!is.null(ne_trans)){
+    userdfn1 <- function (xy1, xy2, mesh) {
+      require(gdistance)
+      costDistance(ne_trans, as.matrix(xy1), as.matrix(xy2))
+    }
+  } else {
+    userdfn1 <- NULL
   }
   num_meshpts <- nrow(mesh)
   D <- par$D
@@ -430,29 +438,35 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   trapn <- detectors
   if (move) {
     if (print) cat("Simulating moving activity centres......")
-    if(!is.null(userdist)){
-      #need to snap population locations to grid of possible hrcs for 
-      #precalculated noneuclidean distance matrix
-    }
     poplist <- vector(mode = "list", length = n_occasions)
     poplist[[1]] <- pop
     traplist <- vector(mode = "list", length = n_occasions)
     traplist[[1]] <- detectors
+    if(!is_null(ne_trans)){
+      userdistlist <- vector(mode = "list", length = n_occasions)
+      userdistlist[[1]] <- userdfn1(mesh, pop, mesh)
+    }
     if (is.null(usage(detectors))){ usage(detectors) <- matrix(1, nr = nrow(detectors), nc = nocc)}
     usecols <- which(primary == 1)
     usage(traplist[[1]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = length(usecols))
     for (k in 2:n_occasions) {
+      if(!is.null(ne_trans)){
+        userdistlist[[k]] <- userdfn1(mesh, pop, mesh)
+      }
       for (i in 1:nrow(pop)) {
         #note this is euclidean distance
-        if(is.null(userdist)){
+        if(is.null(userdistlist)){
           dist <- pop[i,1] - mesh[,1]
-          pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
           dist2 <- pop[i,2] - mesh[,2]
+          pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
           pr2 <- dnorm(dist2, 0, par$sd * sqrt(dt[k-1]))
+          pr <- pr*pr2 / sum(pr*pr2)
         } else {
-         #reference noneuclidean distance matrix
+          dist <- userdistlist[[k]][,i]
+          pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
+          pr <- pr/sum(pr)
         }
-         pr <- pr*pr2 / sum(pr*pr2)
+        }
         pop[i,] <- mesh[sample(1:nrow(mesh), size = 1, prob = pr),]    
       }
       poplist[[k]] <- pop
@@ -474,7 +488,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                             detectfn = "HHN", 
                                             detectpar = list(lambda0 = lambda0, 
                                                              sigma = sigma), 
-                                            userdist = userdist,
+                                            userdist = userdfn1,
                                             noccasions = length(which(primary == k)), 
                                             renumber = FALSE)
     }
@@ -485,7 +499,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                     detectfn = "HHN", 
                                     detectpar = list(lambda0 = lambda0, 
                                                      sigma = sigma), 
-                                    userdist = userdist,
+                                    userdist = userdfn1,
                                     noccasions = nocc,
                                     nsession = nsess, 
                                     renumber = FALSE)
