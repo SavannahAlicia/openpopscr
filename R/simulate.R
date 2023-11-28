@@ -466,7 +466,6 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
           pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
           pr <- pr/sum(pr)
         }
-        }
         pop[i,] <- mesh[sample(1:nrow(mesh), size = 1, prob = pr),]    
       }
       poplist[[k]] <- pop
