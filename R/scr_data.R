@@ -110,7 +110,14 @@ ScrData <- R6Class("ScrData",
       if (private$detector_type_ == 3) {
         private$capij_ <- matrix(0, nr = dim(private$capthist_)[1], nc = dim(private$capthist_)[2])
         for (j in 1:dim(private$capthist_)[2]) {
-          private$capij_[,j] <- as.numeric(apply(private$capthist_[,j,], 1, FUN = function(x) {which(x > 0)}))
+          #if zero detections that occasion, return NAs
+          #otherwise, return which are detections
+          whichtrap <- as.numeric(apply(private$capthist_[,j,], 1, FUN = function(x) {which(x > 0)}))
+          if(length(whichtrap) > 0){
+            private$capij_[,j] <- whichtrap
+          } else {
+            private$capij_[,j] <- rep(NA, dim(private$capthist_)[1])
+          }
         }
         private$capij_[is.na(private$capij_)] <- -9
         private$capij_ <- private$capij_ - 1 
