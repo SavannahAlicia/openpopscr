@@ -376,6 +376,7 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #' @param n_sec_occasions number of secondary occasions in survey
 #' @param detectors secr trap object
 #' @param mesh secr mesh object
+#' @param poly bounding polygon for secr sim.popn
 #' @param ihp relative density at each mesh point for inhomogeneous (so density at point = D*ihp)
 #' @param move if TRUE, activity centres move and par$sd must be specified 
 #' @param time vector with time units between occasions 
@@ -386,7 +387,7 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #'
 #' @return ScrData object 
 #' @export
-simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, ne_trans = NULL, seed = NULL, print = TRUE) {
+simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, poly = NULL, ihp = NULL, move = FALSE, time = NULL, primary = NULL, ne_trans = NULL, seed = NULL, print = TRUE) {
   if (!is.null(seed)) set.seed(seed)
   if (is.null(time)) {
     if (is.null(primary)) {
@@ -396,7 +397,9 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
     }
   }
   if(!is.null(ne_trans)){
+    covariates(mesh) <- data.frame(noneuc = factor(rep("noneuc", nrow(mesh))))
     userdfn1 <- function (xy1, xy2, mesh) {
+      if (missing(xy1)) return("noneuc")
       require(gdistance)
       costDistance(ne_trans, as.matrix(xy1), as.matrix(xy2))
     }
@@ -418,7 +421,8 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   if (length(beta) == 1) beta <- c(beta, rep((1 - beta) / (n_occasions - 1), n_occasions - 1))
   # simulate population
   if (print) cat("Simulating population and activity centres.......")
-  pop <- sim.popn(D = D, core = mesh, model2D = model2D, Ndist = "poisson", buffertype = "rect")
+  pop <- sim.popn(D = D, core = mesh, poly = poly, model2D = model2D, Ndist = "poisson", buffertype = "rect")
+  rownames(pop) <- NULL
   if (print) cat("done\n")
   birth_time <- sample(1:n_occasions, size = nrow(pop), prob = beta, replace = TRUE)
   dt <- diff(time)
@@ -436,22 +440,30 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   nsess <- 1
   popn <- pop 
   trapn <- detectors
+  if(!is.null(ne_trans)){
+    userdistn <- userdfn1(mesh, pop, mesh)
+    meshbymesh <- userdfn1(mesh, mesh, mesh)
+    meshistrap <- apply(as.array(1:nrow(detectors)), 1, 
+                        FUN = function(x){which(mesh$x == detectors[x,"x"] & 
+                                                  mesh$y == detectors[x,"y"])})
+    
+  }
   if (move) {
     if (print) cat("Simulating moving activity centres......")
     poplist <- vector(mode = "list", length = n_occasions)
     poplist[[1]] <- pop
     traplist <- vector(mode = "list", length = n_occasions)
     traplist[[1]] <- detectors
-    if(!is_null(ne_trans)){
+    if(!is.null(ne_trans)){
       userdistlist <- vector(mode = "list", length = n_occasions)
-      userdistlist[[1]] <- userdfn1(mesh, pop, mesh)
+      userdistlist[[1]] <- userdistn
     }
     if (is.null(usage(detectors))){ usage(detectors) <- matrix(1, nr = nrow(detectors), nc = nocc)}
     usecols <- which(primary == 1)
     usage(traplist[[1]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = length(usecols))
     for (k in 2:n_occasions) {
       if(!is.null(ne_trans)){
-        userdistlist[[k]] <- userdfn1(mesh, pop, mesh)
+        userdistlist[[k]] <- userdistlist[[k-1]]
       }
       for (i in 1:nrow(pop)) {
         #note this is euclidean distance
@@ -466,7 +478,12 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
           pr <- dnorm(dist, 0, par$sd * sqrt(dt[k-1]))
           pr <- pr/sum(pr)
         }
-        pop[i,] <- mesh[sample(1:nrow(mesh), size = 1, prob = pr),]    
+        if (!all(is.na(pr))){
+          #if pop i is down too narrow of a stream, don't move it
+          whichmesh <- sample(1:nrow(mesh), size = 1, prob = pr)
+          pop[i,] <- mesh[whichmesh,]   
+          userdistlist[[k]][,i] <- meshbymesh[whichmesh,]
+        }
       }
       poplist[[k]] <- pop
       traplist[[k]] <- detectors 
@@ -476,6 +493,9 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
     popn <- poplist
     trapn <- traplist
     nsess <- n_occasions
+    if(!is.null(ne_trans)){
+      userdistn <- userdistlist
+    }
     if (print) cat("done\n")
   } 
   if (print) cat("Simulating capture histories......")
@@ -487,7 +507,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                             detectfn = "HHN", 
                                             detectpar = list(lambda0 = lambda0, 
                                                              sigma = sigma), 
-                                            userdist = userdfn1,
+                                            userdist = userdistn[[k]][trapismesh,],
                                             noccasions = length(which(primary == k)), 
                                             renumber = FALSE)
     }
@@ -498,7 +518,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                     detectfn = "HHN", 
                                     detectpar = list(lambda0 = lambda0, 
                                                      sigma = sigma), 
-                                    userdist = userdfn1,
+                                    userdist = userdistn[trapismesh,],
                                     noccasions = nocc,
                                     nsession = nsess, 
                                     renumber = FALSE)
