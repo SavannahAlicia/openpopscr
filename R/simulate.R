@@ -443,7 +443,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   if(!is.null(ne_trans)){
     userdistn <- userdfn1(mesh, pop, mesh)
     meshbymesh <- userdfn1(mesh, mesh, mesh)
-    meshistrap <- apply(as.array(1:nrow(detectors)), 1, 
+    trapismesh <- apply(as.array(1:nrow(detectors)), 1, 
                         FUN = function(x){which(mesh$x == detectors[x,"x"] & 
                                                   mesh$y == detectors[x,"y"])})
     
