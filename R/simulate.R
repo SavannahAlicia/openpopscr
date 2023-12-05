@@ -414,7 +414,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   } else {
     model2D <- "poisson"
   }
-  perhectare <- attr(mesh, "area")/10000
+  perhectare <- attr(mesh, "area")
   D <- D * perhectare
   phi <- par$phi
   if (length(phi) == 1) phi <- rep(phi, n_occasions - 1)
