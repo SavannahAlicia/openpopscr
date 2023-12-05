@@ -414,7 +414,8 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   } else {
     model2D <- "poisson"
   }
-  D <- D / 100 #assumes mesh size?
+  perhectare <- attr(mesh, "area")/10000
+  D <- D * perhectare
   phi <- par$phi
   if (length(phi) == 1) phi <- rep(phi, n_occasions - 1)
   beta <- par$beta
@@ -447,7 +448,11 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                         FUN = function(x){which(mesh$x == detectors[x,"x"] & 
                                                   mesh$y == detectors[x,"y"])})
     
+  } else {
+    userdistn <- NULL
+    trapismesh <- NULL
   }
+    
   if (move) {
     if (print) cat("Simulating moving activity centres......")
     poplist <- vector(mode = "list", length = n_occasions)
