@@ -387,7 +387,11 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #'
 #' @return ScrData object 
 #' @export
-simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, poly = NULL, ihp = NULL, move = FALSE, time = NULL, primary = NULL, ne_trans = NULL, seed = NULL, print = TRUE) {
+simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, 
+                                detectors, mesh, 
+                                poly = NULL, ihp = NULL, move = FALSE, 
+                                time = NULL, primary = NULL, ne_trans = NULL, 
+                                seed = NULL, print = TRUE) {
   if (!is.null(seed)) set.seed(seed)
   if (is.null(time)) {
     if (is.null(primary)) {
@@ -415,7 +419,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
     model2D <- "poisson"
   }
   perhectare <- attr(mesh, "area")
-  D <- D * perhectare
+  D <- (D * perhectare)/100
   phi <- par$phi
   if (length(phi) == 1) phi <- rep(phi, n_occasions - 1)
   beta <- par$beta
@@ -442,7 +446,9 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   popn <- pop 
   trapn <- detectors
   if(!is.null(ne_trans)){
+    if (print) cat("Calculating noneuclidean distances to hrcs......")
     userdistn <- userdfn1(mesh, pop, mesh)
+    if (print) cat("Calculating noneuclidean distances between traps......")
     meshbymesh <- userdfn1(mesh, mesh, mesh)
     trapismesh <- apply(as.array(1:nrow(detectors)), 1, 
                         FUN = function(x){which(mesh$x == detectors[x,"x"] & 
