@@ -443,9 +443,18 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   if(!is.null(ne_trans)){
     userdistn <- userdfn1(mesh, pop, mesh)
     meshbymesh <- userdfn1(mesh, mesh, mesh)
+    trapoffset <- max(apply(as.array(1:nrow(detectors)), 1,
+                        FUN = function(x){
+                          max(c(min(abs(mesh$x - detectors[x,"x"])),
+                            min(abs(mesh$y - detectors[x,"y"]))))
+                        }))
+    if(trapoffset > 1) {
+      warning(paste("Traps are offset ", trapoffset, "m from mesh pts", sep = ""))
+    }
     trapismesh <- apply(as.array(1:nrow(detectors)), 1, 
-                        FUN = function(x){which(mesh$x == detectors[x,"x"] & 
-                                                  mesh$y == detectors[x,"y"])})
+                        FUN = function(x){which(
+                          abs(mesh$x - detectors[x,"x"]) <= trapoffset  & 
+                          abs(mesh$y - detectors[x,"y"]) <= trapoffset )})
     
   } else {
     userdistn <- NULL
