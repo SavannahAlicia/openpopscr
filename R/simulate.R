@@ -407,15 +407,14 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
     userdfn1 <- NULL
   }
   num_meshpts <- nrow(mesh)
-  D <- par$D
+  D <- par$D #density is hrc per km^2
   if (!is.null(ihp)) {
     D <- D * ihp 
     model2D <- "IHP"
   } else {
     model2D <- "poisson"
   }
-  perhectare <- attr(mesh, "area")
-  D <- D * perhectare
+  D <- D / 100 #convert from hrc per km^2 to hrc per hectare
   phi <- par$phi
   if (length(phi) == 1) phi <- rep(phi, n_occasions - 1)
   beta <- par$beta
