@@ -421,7 +421,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   if (length(beta) == 1) beta <- c(beta, rep((1 - beta) / (n_occasions - 1), n_occasions - 1))
   # simulate population
   if (print) cat("Simulating population and activity centres.......")
-  pop <- sim.popn(D = D, core = mesh, poly = poly, model2D = model2D, Ndist = "poisson", buffertype = "rect")
+  pop <- sim.popn(D = D, core = mesh, model2D = model2D, Ndist = "poisson", buffertype = "rect")
   rownames(pop) <- NULL
   if (print) cat("done\n")
   birth_time <- sample(1:n_occasions, size = nrow(pop), prob = beta, replace = TRUE)
