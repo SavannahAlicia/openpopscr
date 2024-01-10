@@ -430,7 +430,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   life[birth_time == 1, 1] <- 1
   for (k in 2:n_occasions){
     alives <- life[,k-1] == 1
-    life[alives, k] <- rbinom(sum(alives), 1, phi[k - 1]) 
+    life[alives, k] <- rbinom(sum(alives), 1, phi[k - 1]^dt[k-1]) 
     life[birth_time == k, k] <- 1
   }
   
@@ -441,6 +441,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   popn <- pop 
   trapn <- detectors
   if(!is.null(ne_trans)){
+    if (print) cat("Calculating noneuclidean distance matrix......")
     userdistn <- userdfn1(mesh, pop, mesh)
     meshbymesh <- userdfn1(mesh, mesh, mesh)
     trapoffset <- max(apply(as.array(1:nrow(detectors)), 1,
@@ -455,12 +456,11 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                         FUN = function(x){which(
                           abs(mesh$x - detectors[x,"x"]) <= trapoffset  & 
                           abs(mesh$y - detectors[x,"y"]) <= trapoffset )})
-    
+    if (print) cat("done\n")
   } else {
     userdistn <- NULL
     trapismesh <- NULL
   }
-    
   if (move) {
     if (print) cat("Simulating moving activity centres......")
     poplist <- vector(mode = "list", length = n_occasions)
