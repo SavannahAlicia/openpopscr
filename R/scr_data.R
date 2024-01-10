@@ -33,7 +33,8 @@
 #'   \item mesh: mask object from secr package
 #'   \item time: optional vector of numeric time each occasion took place at 
 #'     (used for irregularly spaced occasions). Default is vector 1:n_occasions.
-#'   \item primary: vector with index for each occasion in capthist that pools occasions into primary occasions 
+#'   \item primary: vector with index for each occasion in capthist that pools occasions into primary occasions
+#'   \item userdistmat: user defined non
 #'        
 #' }
 #' 
@@ -278,6 +279,7 @@ ScrData <- R6Class("ScrData",
     cell_area = function() {return(attributes(private$mesh_)$area * 0.01)}, 
     distances = function(){return(private$distances_)},
     imesh = function(){return(private$imesh_)}, 
+    userdistmat = function(){return(private$userdistmat)},
     
     #### SUMMARY STATISTICS 
     
