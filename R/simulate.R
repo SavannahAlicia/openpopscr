@@ -91,42 +91,6 @@ pop_netrans <- function(trans_poly, pop_grid){
   trans <- transition(rp, mean, directions = 16)
   return(trans)
 }
-  
-#' #' Get distance
-#' #' 
-#' #' @param m row of mesh
-#' #' @param j row of traps
-#' #' @param trans transition layer
-#' #' @param poly SpatialPolygon to reference crs
-#' #' @param mesh mesh data.frame
-#' #' @param traps traps data.frame
-#' try_dist <- function(m, j, trans, poly, mesh, traps){
-#'   get_dist <- function(m, j, trans, poly, mesh, traps){
-#'     if (dist(rbind(mesh[m,1:2], traps[j,])) < 2) {
-#'       distance = 0
-#'     } else {
-#'       path <- shortestPath(x = trans, 
-#'                            origin = as.matrix(mesh.[m, c("x","y")]), 
-#'                            goal = as.matrix(traps.[j, c("x","y")]),
-#'                            output = "SpatialLines")
-#'       crs(path) <- crs(poly)
-#'       distance <- gLength(path)
-#'     }
-#'     return(distance)
-#'   }
-#'   out <- tryCatch(
-#'     {
-#'       get_dist(m, j, trans, poly, mesh, traps)
-#'     },
-#'     error=function(e){
-#'       return(NA)
-#'     },
-#'     warning=function(w){
-#'       return(NA)
-#'     }
-#'   )
-#'   return(out)
-#' }
 
 #' Simulate Spatial Capture-Recapture data
 #'
@@ -376,7 +340,6 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #' @param n_sec_occasions number of secondary occasions in survey
 #' @param detectors secr trap object
 #' @param mesh secr mesh object
-#' @param poly bounding polygon for secr sim.popn
 #' @param ihp relative density at each mesh point for inhomogeneous (so density at point = D*ihp)
 #' @param move if TRUE, activity centres move and par$sd must be specified 
 #' @param time vector with time units between occasions 
@@ -387,7 +350,7 @@ simulate_cjs_openscr <- function(par, N, n_occasions, detectors, mesh,  move = F
 #'
 #' @return ScrData object 
 #' @export
-simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, poly = NULL, ihp = NULL, move = FALSE, time = NULL, primary = NULL, ne_trans = NULL, seed = NULL, print = TRUE) {
+simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, mesh, ihp = NULL, move = FALSE, time = NULL, primary = NULL, ne_trans = NULL, seed = NULL, print = TRUE) {
   if (!is.null(seed)) set.seed(seed)
   if (is.null(time)) {
     if (is.null(primary)) {
