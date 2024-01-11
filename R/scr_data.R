@@ -279,7 +279,7 @@ ScrData <- R6Class("ScrData",
     cell_area = function() {return(attributes(private$mesh_)$area * 0.01)}, 
     distances = function(){return(private$distances_)},
     imesh = function(){return(private$imesh_)}, 
-    userdistmat = function(){return(private$userdistmat)},
+    userdistmat = function(){return(private$distances_)},
     
     #### SUMMARY STATISTICS 
     
