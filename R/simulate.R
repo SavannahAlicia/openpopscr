@@ -309,37 +309,36 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   nsess <- 1
   popn <- pop 
   trapn <- detectors
-  if(!is.null(ne_trans)){
-    if (print) cat("Calculating noneuclidean distance matrix......")
-    userdistn <- userdfn1(mesh, pop, mesh)
-    meshbymesh <- userdfn1(mesh, mesh, mesh)
-    trapoffset <- max(apply(as.array(1:nrow(detectors)), 1,
-                        FUN = function(x){
-                          max(c(min(abs(mesh$x - detectors[x,"x"])),
-                            min(abs(mesh$y - detectors[x,"y"]))))
-                        }))
-    if(trapoffset > 1) {
-      warning(paste("Traps are offset ", trapoffset, "m from mesh pts", sep = ""))
-    }
-    trapismesh <- apply(as.array(1:nrow(detectors)), 1, 
-                        FUN = function(x){which(
-                          abs(mesh$x - detectors[x,"x"]) <= trapoffset  & 
-                          abs(mesh$y - detectors[x,"y"]) <= trapoffset )})
-    if (print) cat("done\n")
-  } else {
-    userdistn <- NULL
-    trapismesh <- NULL
-  }
   if (move) {
+    if(!is.null(ne_trans)){
+      if (print) cat("Calculating noneuclidean distance matrix......")
+      meshbymesh <- userdfn1(mesh, mesh, mesh)
+      trapoffset <- max(apply(as.array(1:nrow(detectors)), 1,
+                              FUN = function(x){
+                                max(c(min(abs(mesh$x - detectors[x,"x"])),
+                                      min(abs(mesh$y - detectors[x,"y"]))))
+                              }))
+      if(trapoffset > 1) {
+        warning(paste("Traps are offset ", trapoffset, "m from mesh pts", sep = ""))
+      }
+      trapismesh <- apply(as.array(1:nrow(detectors)), 1, 
+                          FUN = function(x){which(
+                            abs(mesh$x - detectors[x,"x"]) <= trapoffset  & 
+                              abs(mesh$y - detectors[x,"y"]) <= trapoffset )})
+      if (print) cat("done\n")
+      
+      userdistn <- userdfn1(mesh, pop, mesh)
+      userdistlist <- vector(mode = "list", length = n_occasions)
+      userdistlist[[1]] <- userdistn
+    } else {
+      userdistn <- NULL
+      trapismesh <- NULL
+    }
     if (print) cat("Simulating moving activity centres......")
     poplist <- vector(mode = "list", length = n_occasions)
     poplist[[1]] <- pop
     traplist <- vector(mode = "list", length = n_occasions)
     traplist[[1]] <- detectors
-    if(!is.null(ne_trans)){
-      userdistlist <- vector(mode = "list", length = n_occasions)
-      userdistlist[[1]] <- userdistn
-    }
     if (is.null(usage(detectors))){ usage(detectors) <- matrix(1, nr = nrow(detectors), nc = nocc)}
     usecols <- which(primary == 1)
     usage(traplist[[1]]) <- matrix(usage(detectors)[,usecols], nr = nrow(detectors), nc = length(usecols))
@@ -400,8 +399,8 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                     detectfn = "HHN", 
                                     detectpar = list(lambda0 = lambda0, 
                                                      sigma = sigma), 
-                                    userdist = userdistn[trapismesh,],
-                                    noccasions = nocc,
+                                    userdist = userdfn1,
+                                    noccasions = n_sec_occasions,
                                     nsession = nsess, 
                                     renumber = FALSE)
   }
@@ -415,6 +414,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   seen <- rep(TRUE, n)
   for (i in seq(n)) {
     life[i, birth_time[i]:n_occasions] <- cumprod(life[i, birth_time[i]:n_occasions])
+    #capture_history[i, life[i,][primary] ==0,] <- 0
     capture_history[i, ,] <- diag(life[i,][primary]) %*% capture_history[i, ,]
     if (sum(capture_history[i, ,]) == 0) seen[i] <- FALSE
   } 
