@@ -101,8 +101,6 @@ ScrModel <- R6Class("ScrModel",
       if (!(name %in% names(private$computed_par_))) stop("No parameter with that name.")
       ipar <- match(name, names(private$computed_par_))
       type <- private$par_type_[ipar]
-      print(ipar)
-      print(type)
       if (is.null(j)) j <- 1:private$data_$n_traps() 
       if (is.null(k)) {
         if (type == "k1ms" | type == "k1m") {
