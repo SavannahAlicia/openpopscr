@@ -113,7 +113,7 @@ ScrModel <- R6Class("ScrModel",
           k <- 1:private$data_$n_occasions("all") 
         }
       }
-      if (is.null(s)) s <- 1
+      if (is.null(s)) s <- 1:private$state_$nstates() 
       if (!identical(private$par_, private$last_par_)) private$compute_par() 
       if (type == "jk") {
         return(private$computed_par_[[ipar]][k, j])
