@@ -275,6 +275,21 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   } else {
     userdfn1 <- NULL
   }
+  #note states only implemented for detection parameters
+  boolstatemod <- length(par$lambda0) > 1 | length(par$sigma) > 1
+  if (boolstatemod){
+    if (!is.na(dim(par$phi)[3])){
+      warning("Mixture models only implemented for detection parameters. Survival 
+            parameter set to first state.")
+      par$phi <- par$phi[,,1]
+      
+    } 
+    if (!is.na(dim(par$beta)[3])){
+      warning("Mixture models only implemented for detection parameters. Recruitment 
+            parameter set to first state.")
+    par$beta <- par$beta[,,1]
+    }
+  }
   num_meshpts <- nrow(mesh)
   D <- par$D #density is hrc per km^2
   if (!is.null(ihp)) {
@@ -290,7 +305,8 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   if (length(beta) == 1) beta <- c(beta, rep((1 - beta) / (n_occasions - 1), n_occasions - 1))
   # simulate population
   if (print) cat("Simulating population and activity centres.......")
-  pop <- sim.popn(D = D, core = mesh, model2D = model2D, Ndist = "poisson", buffertype = "rect")
+  pop <- sim.popn(D = D, core = mesh, model2D = model2D, 
+                  Ndist = "poisson", buffertype = "rect")
   rownames(pop) <- NULL
   if (print) cat("done\n")
   birth_time <- sample(1:n_occasions, size = nrow(pop), prob = beta, replace = TRUE)
@@ -310,6 +326,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   popn <- pop 
   trapn <- detectors
   if (move) {
+    #note mixture model not yet implemented for moving hrcs
     if(!is.null(ne_trans)){
       if (print) cat("Calculating noneuclidean distance matrix......")
       meshbymesh <- userdfn1(mesh, mesh, mesh)
@@ -394,6 +411,36 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
     }
     capture_history <- join(capturehistories)
   } else {
+    if(boolstatemod){
+      #assign state membership (NOTE only valid for lambda and sigma mixtures)
+      nstates <- max(length(lambda0), length(sigma))
+      stateprobs <- par$delta
+      lambda0_state <- lambda0
+      if (length(lambda0_state) == 1){
+        lambda0_state <- rep(lambda0_state, nstates)
+      }
+      sigma_state <- sigma
+      if (length(sigma_state) == 1){
+        sigma_state <- rep(sigma_state, nstates)
+      }
+      istate <- sample(1:nstates, size = nrow(popn), prob = stateprobs, replace = TRUE)
+      ch_list <- list()
+      for (state in 1:nstates){
+        ch_list[[state]] <- sim.capthist(trapn,  
+                                         popn = popn[istate == state,], 
+                                         detectfn = "HHN", 
+                                         detectpar = list(lambda0 = lambda0_state[state], 
+                                                          sigma = sigma_state[state]), 
+                                         #userdist = userdfn1,
+                                         noccasions = n_sec_occasions,
+                                         nsession = nsess, 
+                                         renumber = FALSE)
+        
+      }
+      #needs to be flexible to any number of states
+      capture_history <- rbind(ch_list[[1]], ch_list[[2]])
+      
+    } else {
     capture_history <- sim.capthist(trapn,  
                                     popn = popn, 
                                     detectfn = "HHN", 
@@ -403,6 +450,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
                                     noccasions = n_sec_occasions,
                                     nsession = nsess, 
                                     renumber = FALSE)
+    }
   }
   if (print) cat("done\n")
   # thin capture history by survival
@@ -413,9 +461,9 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   birth_time <- birth_time[ids]
   seen <- rep(TRUE, n)
   for (i in seq(n)) {
-    life[i, birth_time[i]:n_occasions] <- cumprod(life[i, birth_time[i]:n_occasions])
-    #capture_history[i, life[i,][primary] ==0,] <- 0
-    capture_history[i, ,] <- diag(life[i,][primary]) %*% capture_history[i, ,]
+    #life[i, birth_time[i]:n_occasions] <- cumprod(life[i, birth_time[i]:n_occasions])
+    capture_history[i, life[i,][primary] ==0,] <- 0
+    #capture_history[i, ,] <- diag(life[i,][primary]) %*% capture_history[i, ,]
     if (sum(capture_history[i, ,]) == 0) seen[i] <- FALSE
   } 
   if (!is.null(attr(capture_history, "detectedXY"))) { 
