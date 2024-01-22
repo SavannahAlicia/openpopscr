@@ -425,21 +425,19 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
       }
       istate <- sample(1:nstates, size = nrow(popn), prob = stateprobs, replace = TRUE)
       ch_list <- list()
+      capture_history <- c()
       for (state in 1:nstates){
         ch_list[[state]] <- sim.capthist(trapn,  
                                          popn = popn[istate == state,], 
                                          detectfn = "HHN", 
                                          detectpar = list(lambda0 = lambda0_state[state], 
                                                           sigma = sigma_state[state]), 
-                                         #userdist = userdfn1,
+                                         userdist = userdfn1,
                                          noccasions = n_sec_occasions,
                                          nsession = nsess, 
                                          renumber = FALSE)
-        
       }
-      #needs to be flexible to any number of states
-      capture_history <- rbind(ch_list[[1]], ch_list[[2]])
-      
+      capture_history <- do.call(rbind, ch_list)
     } else {
     capture_history <- sim.capthist(trapn,  
                                     popn = popn, 
