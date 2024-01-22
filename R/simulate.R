@@ -278,17 +278,7 @@ simulate_js_openscr <- function(par, n_occasions, n_sec_occasions, detectors, me
   #note states only implemented for detection parameters
   boolstatemod <- length(par$lambda0) > 1 | length(par$sigma) > 1
   if (boolstatemod){
-    if (!is.na(dim(par$phi)[3])){
-      warning("Mixture models only implemented for detection parameters. Survival 
-            parameter set to first state.")
-      par$phi <- par$phi[,,1]
-      
-    } 
-    if (!is.na(dim(par$beta)[3])){
-      warning("Mixture models only implemented for detection parameters. Recruitment 
-            parameter set to first state.")
-    par$beta <- par$beta[,,1]
-    }
+      warning("Mixture models only implemented for detection parameters")
   }
   num_meshpts <- nrow(mesh)
   D <- par$D #density is hrc per km^2
