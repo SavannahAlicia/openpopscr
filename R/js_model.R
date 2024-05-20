@@ -337,13 +337,14 @@ JsModel <- R6Class("JsModel",
       invisible()
     }, 
     
-    make_results = function() {
+    make_results = function(Vcalculated = TRUE) {
       if (is.null(private$mle_)) print("Fit model using $fit method.")
       if (private$print_) cat("Inferring density..........")
       private$infer_D()
       if (private$print_) cat("done\n")
-      if (private$print_) cat("Computing variances..........")
-      private$calc_var()
+      if (private$print_ & Vcalculated) cat("Computing density variances..........")
+      if (private$print_ & !Vcalculated) cat("Skipping density variance computation..........")
+      private$calc_var(Vcalculated)
       if (private$print_) cat("done\n")
       if (private$print_) cat("Computing confidence intervals..........")
       private$calc_confint()
@@ -417,55 +418,63 @@ JsModel <- R6Class("JsModel",
     return(pdet)
   },
   
-  calc_var = function(Dk = NULL) {
-    n_occasions <- self$data()$n_occasions()
-    wpar <- private$convert_par2vec(self$par())
-    np <- length(wpar)
-    pdet <- self$calc_pdet()
-    nparD <- length(wpar[grep("D", names(wpar))])
-    exc <- (np-nparD + 1):np
-    wpar <- c(wpar, self$state()$par())
-    del_pdet <- grad(private$calc_wpdet, wpar)[-exc] 
-    # get covariance matrix 
-    V <- self$cov_matrix()
-    sds <- sqrt(diag(V))
-    # theta variance
-    dist <- self$data()$distances()
-    V_theta <- V[-exc, -exc] * pdet 
-    V_theta <- V_theta * self$data()$n()
-    # log(D) variance
-    Dvar <- t(del_pdet) %*% V_theta %*% del_pdet / pdet^3 + 1 / pdet
-    Dvar <- Dvar / (self$data()$area() * self$get_par("D"))
-    # if Dk is supplied then compute variance of Dks
-    Dk_var <- rep(0, 1)
-    Dk <- private$Dk_
-    alpha <- private$calc_alpha()
-    if (!is.null(Dk)) {
-      Dk_var <- numeric(n_occasions) 
-      for (k in 1:n_occasions) {
-        predictfn <- function(v) {
-          slen <- length(self$state()$par())
-          param2 <- v 
-          if (slen > 0) {
-            ind <- seq(length(v) - slen + 1, length(v))
-            self$state()$set_par(v[ind])
-            param2 <- v[-ind]
+  calc_var = function(Dk = NULL, Vcalculated = TRUE) {
+    if(Vcalculated){
+      n_occasions <- self$data()$n_occasions()
+      wpar <- private$convert_par2vec(self$par())
+      np <- length(wpar)
+      pdet <- self$calc_pdet()
+      nparD <- length(wpar[grep("D", names(wpar))])
+      exc <- (np-nparD + 1):np
+      wpar <- c(wpar, self$state()$par())
+      del_pdet <- grad(private$calc_wpdet, wpar)[-exc] 
+      # get covariance matrix 
+      V <- self$cov_matrix()
+      sds <- sqrt(diag(V))
+      # theta variance
+      dist <- self$data()$distances()
+      V_theta <- V[-exc, -exc] * pdet 
+      V_theta <- V_theta * self$data()$n()
+      # log(D) variance
+      Dvar <- t(del_pdet) %*% V_theta %*% del_pdet / pdet^3 + 1 / pdet
+      Dvar <- Dvar / (self$data()$area() * self$get_par("D"))
+      # if Dk is supplied then compute variance of Dks
+      Dk_var <- rep(0, 1)
+      Dk <- private$Dk_
+      alpha <- private$calc_alpha()
+      if (!is.null(Dk)) {
+        Dk_var <- numeric(n_occasions) 
+        for (k in 1:n_occasions) {
+          predictfn <- function(v) {
+            slen <- length(self$state()$par())
+            param2 <- v 
+            if (slen > 0) {
+              ind <- seq(length(v) - slen + 1, length(v))
+              self$state()$set_par(v[ind])
+              param2 <- v[-ind]
+            }
+            self$set_par(private$convert_vec2par(param2));
+            private$infer_D()
+            return(log(private$Dk_))
           }
-          self$set_par(private$convert_vec2par(param2));
+          oldpar <- self$par()
+          oldpar2 <- self$state()$par()
+          parvec <- private$convert_par2vec(self$par())
+          parvec <- c(parvec, self$state()$par())
+          J <- jacobian(predictfn, parvec)
+          self$set_par(oldpar)
+          self$state()$set_par(oldpar2)
           private$infer_D()
-          return(log(private$Dk_))
+          VD <- J %*% V %*% t(J)
+          Dk_var <- diag(VD)
         }
-        oldpar <- self$par()
-        oldpar2 <- self$state()$par()
-        parvec <- private$convert_par2vec(self$par())
-        parvec <- c(parvec, self$state()$par())
-        J <- jacobian(predictfn, parvec)
-        self$set_par(oldpar)
-        self$state()$set_par(oldpar2)
-        private$infer_D()
-        VD <- J %*% V %*% t(J)
-        Dk_var <- diag(VD)
       }
+    } else {
+      V <- self$cov_matrix()
+      n_occasions <- self$data()$n_occasions()
+      sds = diag(V)*NA
+      Dvar = matrix(NA, 1, 1)
+      Dk_var = rep(NA, n_occasions)
     }
     private$var_ <- list(sds = sds, Dvar = Dvar, Dkvar = Dk_var)
     return(invisible())

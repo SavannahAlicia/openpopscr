@@ -401,15 +401,17 @@ ScrModel <- R6Class("ScrModel",
       llk <- -mod$minimum
       if (args$hessian) {
         V <- solve(mod$hessian)
+        Vcalculated <- TRUE
       } else {
         V <- diag(length(mle))
+        Vcalculated <- FALSE
       }
       if (private$print_) cat("done\n")
-      self$set_mle(mle, V, llk)
+      self$set_mle(mle, V, llk, Vcalculated)
       return(invisible())
     }, 
     
-    set_mle = function(par, V, llk) {
+    set_mle = function(par, V, llk, Vcalculated = TRUE) {
       slen <- length(self$state()$par())
       param2 <- par 
       if (slen > 0) {
@@ -423,9 +425,10 @@ ScrModel <- R6Class("ScrModel",
       private$llk_ <- llk 
       private$V_ <- V
       if (any(diag(V) <= 0)) warning("Variance estimates not reliable, do a bootstrap.")
+      if (Vcalculated == FALSE) warning("Variance was not calculated.")
       sd <- sqrt(diag(private$V_))
       names(sd) <- names(par)
-      private$make_results()
+      private$make_results(Vcalculated)
     },
     
     print = function() {
@@ -748,7 +751,7 @@ ScrModel <- R6Class("ScrModel",
       invisible()
     }, 
     
-    make_results = function() {
+    make_results = function(Vcalculated = TRUE) {
       if (is.null(private$mle_)) print("Fit model using $fit method.")
       par <- private$convert_par2vec(private$mle_)
       sd <- sqrt(diag(private$V_))
