@@ -344,7 +344,7 @@ JsModel <- R6Class("JsModel",
       if (private$print_) cat("done\n")
       if (private$print_ & Vcalculated) cat("Computing density variances..........")
       if (private$print_ & !Vcalculated) cat("Skipping density variance computation..........")
-      private$calc_var(Vcalculated)
+      private$calc_var(Vcalculated = Vcalculated)
       if (private$print_) cat("done\n")
       if (private$print_) cat("Computing confidence intervals..........")
       private$calc_confint()
