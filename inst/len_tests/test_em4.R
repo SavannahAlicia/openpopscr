@@ -32,10 +32,20 @@ par <- list(lambda0 ~ avail,
             beta ~ 1, 
             phi ~ 1, 
             D ~ 1)
+par2 <- list(lambda0 ~ as.factor(avail), 
+            sigma ~ as.factor(avail), 
+            beta ~ 1, 
+            phi ~ 1, 
+            D ~ 1)
 
 # get start values 
-start <- get_start_values(scrdat, model = "JsModel")
-
+start <- #get_start_values(scrdat, model = "JsModel")
+  list(lambda0 = .9, 
+       sigma = 20, 
+       beta = .8, 
+       phi =.8, 
+       D =1500)
+  
 statemod <- StateModel$new(data = scrdat, 
                            names = c("available", "unavailable"), 
                            structure = matrix(c(".", "~1", 
@@ -45,27 +55,48 @@ statemod <- StateModel$new(data = scrdat,
                                                        0.2, 0.8), nr = 2, nc = 2, byrow = T)), 
                            cov = data.frame(avail = c(1, NA)))
 
+statemod2 <- StateModel$new(data = scrdat, 
+                           names = c("available", "available2"), 
+                           structure = matrix(c(".", "~1", 
+                                                "~1", "."), nr = 2, nc = 2, byrow = T), 
+                           start = list(delta = c(0.5, 0.5), 
+                                        tpm = matrix(c(0.8, 0.2,
+                                                       0.2, 0.8), nr = 2, nc = 2, byrow = T)), 
+                           cov = data.frame(avail = c(1, 2)))
+
+
 # create model object 
 oo <- JsModel$new(par, scrdat, start, statemod = statemod)
-
+oo2 <- JsModel$new(par2, scrdat, start, statemod = statemod2)
 # compute initial likelihood 
 oo$calc_llk()
 
 # fit model 
 nlm_args <- list(iterlim = 150, hessian = FALSE, gradtol = 1e-3)
 oo$fit(nlm_args)
-
+oo2$fit(nlm_args)
 # see results 
 oo
-
+prod(exp(oo$estimates()$par[1:2,1]))
+true_par
+oo$get_par("D")
 oo$get_par("lambda0", k = 1, j = 1)
 oo$get_par("sigma", k = 1, j = 1)
 oo$get_par("phi", k = 1, m = 1)
 oo$get_par("beta", m = 1)
-oo$get_par("D")
 
 oo$state()$tpm()
 oo$state()$delta()
 oo$state()$par()
 oo$state()$nstates()
 oo$state()$groups()
+
+
+oo2
+prod(exp(oo2$estimates()$par[1:2,1]))
+true_par
+oo2$get_par("D")
+oo2$get_par("lambda0", k = 1, j = 1)
+oo2$get_par("sigma", k = 1, j = 1)
+oo2$get_par("phi", k = 1, m = 1)
+oo2$get_par("beta", m = 1)
