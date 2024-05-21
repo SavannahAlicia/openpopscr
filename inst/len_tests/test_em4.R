@@ -100,3 +100,20 @@ oo2$get_par("lambda0", k = 1, j = 1)
 oo2$get_par("sigma", k = 1, j = 1)
 oo2$get_par("phi", k = 1, m = 1)
 oo2$get_par("beta", m = 1)
+
+
+#------------------------------------------------------------------------
+
+statemodseason <- StateModel$new(data = scrdat, 
+                                 names = c("available", "unavailable"), 
+                                 structure = matrix(c(".", "~season", 
+                                                      "~season", "."), nr = 2, nc = 2, byrow = T), 
+                                 start = list(delta = c(0.5, 0.5), 
+                                              tpm = matrix(c(0.8, 0.2,
+                                                             0.2, 0.8), nr = 2, nc = 2, byrow = T)), 
+                                 cov = data.frame(avail = c(1, NA)))
+scrdat$add_covariate("season", factor(c(1,2,3,4,1,2,3,4,1,2)), "k")
+
+
+oo_season <- JsModel$new(par, scrdat, start, statemod = statemodseason)
+oo_season$fit(nlm_args)
