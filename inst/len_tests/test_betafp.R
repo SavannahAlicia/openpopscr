@@ -2,7 +2,7 @@
 library(openpopscr)
 library(ggplot2)
 RcppParallel::setThreadOptions(numThreads = 10)
-source("inst/len_tests_simulate_LT.R")
+source("inst/len_tests/simulate_SR.R")
 
 # simulate data -----------------------------------------------------------
 
@@ -17,12 +17,11 @@ mesh <- make.mask(detectors, buffer = 100, nx = 64, ny = 64, type = "trapbuffer"
 
 # set number of occasions to simulate
 n_occasions <- 10
+n_sec_per_prim <- 10
 
-
-sim_and_fit <- function(true_par, n_occasions, detectors, mesh, seed = NA){
+sim_and_fit <- function(true_par, n_occasions, n_sec_per_prim, mesh, seed = NA){
   # simulate ScrData 
-  scrdat <- simulate_js_openscr(par = true_par, n_occasions = n_occasions, 
-                                n_sec_occasions = n_occasions,
+  scrdat <- simulate_js_openscr(par = true_par, primary = sort(rep(1:n_occasions, n_sec_per_prim)),
                                 detectors = detectors, mesh = mesh, seed = seed)
   
   scrdat$add_covariate("firstprim", factor(c(1,rep(0, 9))), "p")
@@ -131,5 +130,5 @@ test2 <- sim_and_fit(true_par, n_occasions, detectors, mesh, 19593)
 
 
 ggplot() +
-  geom_line(data = many[[2]]$plotdat, aes(x = primary, y = beta, col = model))
+  geom_line(data = test2$plotdat, aes(x = primary, y = beta, col = model))
 
