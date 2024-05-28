@@ -1,6 +1,7 @@
 #### Jolly-Seber example 
 library(openpopscr)
 RcppParallel::setThreadOptions(numThreads = 10)
+source("inst/len_tests/simulate_SR.R")
 
 # simulate data -----------------------------------------------------------
 
