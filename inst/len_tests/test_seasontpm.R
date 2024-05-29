@@ -30,7 +30,18 @@ scrdat <- simulate_js_openscr(par = true_par, primary = primary,
                               detectors = detectors, mesh = mesh, seed = 19592,
                               temporary_emigration = temporary_emigration)
 
-scrdat$add_covariate("season", as.factor(rep(c(1,2), 5)), "p")
+scrdat$add_covariate("season", as.factor(c(1,2,3,4,1,2,3,4,1,2)), "p")
+
+#is this possible with an empty primary?
+capthistwempty <- scrdat$capthist()
+capthistwempty[,primary %in% c(5,6,7),] <- 0
+usage(attr(capthistwempty, "traps"))[,primary %in% c(5,6,7)] <- 0
+
+scrdatwempty <- ScrData$new(capthist = capthistwempty, 
+                            mesh = scrdat$mesh(),
+                            time = scrdat$time(),
+                            primary = scrdat$primary())
+scrdatwempty$add_covariate("season", as.factor(c(1,2,3,4,1,2,3,4,1,2)), "p")
 
 # fit model ---------------------------------------------------------------
 
@@ -49,7 +60,7 @@ start <- #get_start_values(scrdat, model = "JsModel")
        phi =.8, 
        D =1500)
   
-statemod <- StateModel$new(data = scrdat, 
+statemod <- StateModel$new(data = scrdatwempty, 
                            names = c("available", "unavailable"), 
                            structure = matrix(c(".", "~season", 
                                                 "~season", "."), nr = 2, nc = 2, byrow = T), 
@@ -60,7 +71,7 @@ statemod <- StateModel$new(data = scrdat,
 
 
 # create model object 
-oo <- JsModel$new(par, scrdat, start, statemod = statemod)
+oo <- JsModel$new(par, scrdatwempty, start, statemod = statemod)
 # compute initial likelihood 
 oo$calc_llk()
 
