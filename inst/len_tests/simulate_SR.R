@@ -316,5 +316,7 @@ simulate_js_openscr <- function(par, detectors, mesh, primary,
   if (print) cat("Creating ScrData object......")
   simdat <- ScrData$new(capture_history, mesh, time, primary = primary) 
   if (print) cat("done\n")
+  #also return population size at each time point and 
+  #superpopulation size
   return(simdat)
 }
