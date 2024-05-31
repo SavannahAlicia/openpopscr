@@ -267,8 +267,10 @@ ScrModel <- R6Class("ScrModel",
         for (k in 1:n_occasions) {
           print(paste("s", s, "k", k))
           for (dpar in 1:n_det_par) det_par[[dpar]] <- as.vector(self$get_par(self$detectfn()$par(dpar), k = k, m = 1, s = s))
+          print(paste(det_par[[dpar]]))
           if (any(sapply(det_par, anyNA))) {
             if (all(sapply(det_par, anyNA))) {
+              print(paste("allNA"))
               enc_rate[[s]][k,,] <- 0
             } else {
               stop("Make sure that either all detection parameters have a state variable with NA's in the same places or none do.")
