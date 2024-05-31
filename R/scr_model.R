@@ -265,6 +265,7 @@ ScrModel <- R6Class("ScrModel",
       for (s in 1:nstates) {
         enc_rate[[s]] <- array(0, dim = c(ncol(dist), nrow(dist), n_occasions)) 
         for (k in 1:n_occasions) {
+          print(paste("s", s, "k", k))
           for (dpar in 1:n_det_par) det_par[[dpar]] <- as.vector(self$get_par(self$detectfn()$par(dpar), k = k, m = 1, s = s))
           if (any(sapply(det_par, anyNA))) {
             if (all(sapply(det_par, anyNA))) {
