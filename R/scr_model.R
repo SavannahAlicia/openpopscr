@@ -221,7 +221,7 @@ ScrModel <- R6Class("ScrModel",
     
     pr_state = function() {
       fw <- private$calc_forwback() 
-      nocc <- private$data_$n_occasions("all")
+      nocc <- private$data_$n_occasions()
       n <- private$data_$n()
       nmesh <- private$data_$n_meshpts()
       nstates <- self$nstates()
