@@ -46,8 +46,8 @@ JsTransientModel <- R6Class("JsTransientModel",
     initialize = function(form, data, start, detectfn = NULL, statemod = NULL, print = TRUE) {
       private$check_input(form, data, start, detectfn, print)
       #if user distance matrix, also need mesh distance matrix for moving AC
-      if(!is.null(data$userdistmat)){
-        if(is.null(data$usermeshdistmat)){
+      if(!is.null(data$userdistmat())){
+        if(is.null(data$usermeshdistmat())){
           stop("For moving AC, you must include a non-Euclidean distance matrix for the mesh as well as traps to mesh.")
         } else {
           private$noneuclidean <- TRUE
@@ -59,7 +59,7 @@ JsTransientModel <- R6Class("JsTransientModel",
       private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = 4)
       for (m in 1:data$n_meshpts()) {
         if(private$noneuclidean){
-          dis <- data$usermeshdistmat[1,]
+          dis <- data$usermeshdistmat()[1,]
         } else {
           dis <- sqrt((data$mesh()[m, 1] - data$mesh()[,1])^2 + (data$mesh()[m, 2] - data$mesh()[, 2])^2)
          }
