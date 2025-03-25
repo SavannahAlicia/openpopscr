@@ -157,9 +157,8 @@ ScrData <- R6Class("ScrData",
         private$distances_ <- userdistmat
       }
       
-      if(!is.null(usermeshdistmat)){
-        private$usermeshdistmat_ <- usermeshdistmat
-      }
+    private$usermeshdistmat_ <- usermeshdistmat
+      
 
       ## compute distance centroid-to-mesh
       private$ibuf_ <- attributes(mesh)$ibuffer
