@@ -212,6 +212,7 @@ JsTransientModel <- R6Class("JsTransientModel",
     inside_ = NULL,
     num_cells_ = NULL,
     start_ = NULL, 
+    noneuclidean = NULL,
     
     initialise_par = function(start) {
       n_det_par <- private$detfn_$npars()
