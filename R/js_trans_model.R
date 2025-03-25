@@ -45,13 +45,25 @@ JsTransientModel <- R6Class("JsTransientModel",
     
     initialize = function(form, data, start, detectfn = NULL, statemod = NULL, print = TRUE) {
       private$check_input(form, data, start, detectfn, print)
+      #if user distance matrix, also need mesh distance matrix for moving AC
+      if(!is.null(data$userdistmat)){
+        if(is.null(data$usermeshdistmat)){
+          stop("For moving AC, you must include a non-Euclidean distance matrix for the mesh as well as traps to mesh.")
+        } else {
+          private$noneuclidean <- TRUE
+        }
+      } else {private$noneuclidean <- FALSE}
       private$data_ <- data
       private$start_ <- start 
       private$dx_ <- attr(data$mesh(), "spacing")
       private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = 4)
       for (m in 1:data$n_meshpts()) {
-        dis <- sqrt((data$mesh()[m, 1] - data$mesh()[,1])^2 + (data$mesh()[m, 2] - data$mesh()[, 2])^2)
-        wh <- which(dis < (1 + 1e-6) * private$dx_ & dis > 1e-16) - 1 
+        if(private$noneuclidean){
+          dis <- data$usermeshdistmat[1,]
+        } else {
+          dis <- sqrt((data$mesh()[m, 1] - data$mesh()[,1])^2 + (data$mesh()[m, 2] - data$mesh()[, 2])^2)
+         }
+          wh <- which(dis < (1 + 1e-6) * private$dx_ & dis > 1e-16) - 1 
         if(length(wh) > 0) private$inside_[m, 1:length(wh)] <- as.numeric(wh) 
       }
       box <- attributes(data$mesh())$boundingbox

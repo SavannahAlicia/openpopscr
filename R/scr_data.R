@@ -75,7 +75,8 @@ ScrData <- R6Class("ScrData",
                           mesh, 
                           time = NULL, 
                           primary = NULL,
-                          userdistmat = NULL) {
+                          userdistmat = NULL,
+                          usermeshdistmat = NULL) {
       private$check_input(capthist, mesh, time, primary) 
       ## detectors
       private$detector_type_ <- switch(attr(traps(capthist), "detector")[1], 
