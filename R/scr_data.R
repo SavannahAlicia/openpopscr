@@ -156,9 +156,9 @@ ScrData <- R6Class("ScrData",
       } else {
         private$distances_ <- userdistmat
       }
+      private$usermeshdistmat_ <- usermeshdistmat
       
-    private$usermeshdistmat_ <- usermeshdistmat
-      
+       
 
       ## compute distance centroid-to-mesh
       private$ibuf_ <- attributes(mesh)$ibuffer
@@ -413,6 +413,7 @@ ScrData <- R6Class("ScrData",
     cov_ = NULL, # list of covariates 
     cov_type_ = NULL, # type of each covariate in cov_ list 
     distances_ = NULL, # matrix of distances from trap to mesh 
+    usermeshdistmat_ = NULL,
     detector_type_ = NULL, # type of detectors as integer (see initialize)
     primary_ = NULL, # vector of indices for each occasion indexing what primary it belongs to
     n_primary_ = NULL, # number of primary occasions
