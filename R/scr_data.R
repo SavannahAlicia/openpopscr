@@ -156,6 +156,10 @@ ScrData <- R6Class("ScrData",
       } else {
         private$distances_ <- userdistmat
       }
+      
+      if(!is.null(usermeshdistmat)){
+        private$usermeshdistmat_ <- usermeshdistmat
+      }
 
       ## compute distance centroid-to-mesh
       private$ibuf_ <- attributes(mesh)$ibuffer
@@ -281,7 +285,7 @@ ScrData <- R6Class("ScrData",
     distances = function(){return(private$distances_)},
     imesh = function(){return(private$imesh_)}, 
     userdistmat = function(){return(private$distances_)},
-    
+    usermeshdistmat = function(){return(private$usermeshdistmat_)}
     #### SUMMARY STATISTICS 
     
     encrate = function(each = FALSE) {
