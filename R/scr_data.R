@@ -286,6 +286,7 @@ ScrData <- R6Class("ScrData",
     imesh = function(){return(private$imesh_)}, 
     userdistmat = function(){return(private$distances_)},
     usermeshdistmat = function(){return(private$usermeshdistmat_)}
+    
     #### SUMMARY STATISTICS 
     
     encrate = function(each = FALSE) {
