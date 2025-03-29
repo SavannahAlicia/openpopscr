@@ -59,7 +59,7 @@ JsTransientModel <- R6Class("JsTransientModel",
       private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = 4)
       for (m in 1:data$n_meshpts()) {
         if(private$noneuclidean){
-          dis <- data$usermeshdistmat()[1,]
+          dis <- data$usermeshdistmat()[m,]
         } else {
           dis <- sqrt((data$mesh()[m, 1] - data$mesh()[,1])^2 + (data$mesh()[m, 2] - data$mesh()[, 2])^2)
          }
