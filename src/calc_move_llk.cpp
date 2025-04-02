@@ -35,7 +35,7 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
                      const arma::mat inside) {
   arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0)); //sparse square matrix, dim number of mesh cells
   int icol = inside.n_cols;
-  int s;
+  //int s;
   double sum; 
   double rate;
   double dx;
@@ -67,7 +67,7 @@ arma::vec ExpG(const arma::vec& v_in, //prob ch & m (for kp and s), length [m]
   double btol = 1.0e-7;
   double gamma = 0.9;
   double mb = m;
-  //int nstep = 0;
+  int nstep = 0;
   double t_now = 0;
   double t_step;
   double delta = 1.2;
@@ -222,7 +222,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
                 arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), meshdistmat(meshdistmat), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
     if (num_states > 1) {
       tpm.resize(Kp); //length of vector (of matrices)
-      for (int kp = 0; kp < Kp 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
+      for (int kp = 0; kp < Kp - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
     }
     alivestates = num_states - minstate - maxstate; 
     trm.resize(Kp * alivestates); //different transitions for each alive state
@@ -333,7 +333,7 @@ double C_calc_move_pdet(const int J,
                    Rcpp::List tpms,
                    const arma::vec num_cells, 
                    const arma::mat inside, 
-                   const arma::meshdistmat, 
+                   const arma::mat meshdistmat, 
                    const arma::vec dt,
                    const arma::mat sd, 
                    const int num_states, 
