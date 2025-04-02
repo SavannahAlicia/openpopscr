@@ -57,14 +57,21 @@ JsTransientModel <- R6Class("JsTransientModel",
       } else {
         private$noneuclidean_ <- FALSE
       }
+      private$data_ <- data
+      private$start_ <- start 
+      private$dx_ <- attr(data$mesh(), "spacing")
       
       if(private$noneuclidean_){
-        closest_dx <- max(apply(data$usermeshdistmat(), 1, function(mdr){min(mdr[mdr!=0])}))
+        closest_dx <- max(apply(private$data_$usermeshdistmat(), 1, 
+                                function(mdr){min(mdr[mdr!=0])}))
         # Need to check that there aren't pts that can't trans to all others
-        if(length(which(apply(data$usermeshdistmat(), 1, function(mdr){sum(mdr <= closest_dx)}) ==2)) > 1){
-          closest_dx <- max(apply(data$usermeshdistmat(), 1, function(mdr){min(mdr[mdr > closest_dx])}))
+        if(length(which(apply(private$data_$usermeshdistmat(), 1, 
+                              function(mdr){sum(mdr <= closest_dx)}) ==2)) > 1){
+          closest_dx <- max(apply(private$data_$usermeshdistmat(), 1,
+                                  function(mdr){min(mdr[mdr > closest_dx])}))
         } # Non Euclidean distance requires different "inside" indexing
-        ncol_inside <- max(apply(data$usermeshdistmat(),1, function(mdr){sum(mdr<= closest_dx)}))
+        ncol_inside <- max(apply(private$data_$usermeshdistmat(),1, 
+                                 function(mdr){sum(mdr<= closest_dx)}))
       } else {
         closest_dx <- (1 + 1e-6) * private$dx_
         ncol_inside <- 4 #at most 4 cells can be adjacent
@@ -77,9 +84,6 @@ JsTransientModel <- R6Class("JsTransientModel",
                  (meshx[2]- private$data_$mesh()$y)^2)})
       }
      
-      private$data_ <- data
-      private$start_ <- start 
-      private$dx_ <- attr(data$mesh(), "spacing")
       private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = ncol_inside) 
       for (m in 1:data$n_meshpts()) {
         dis <- private$meshdistmat_[m,]
@@ -166,7 +170,7 @@ JsTransientModel <- R6Class("JsTransientModel",
                                tpms, 
                                private$num_cells_,
                                private$inside_, 
-                               private$dx_, # make this a meshdistmat
+                               private$meshdistmat_, # was private$dx_, # make this a meshdistmat
                                dt, 
                                sd,
                                nstates + 2,
@@ -213,7 +217,7 @@ JsTransientModel <- R6Class("JsTransientModel",
                              tpms,
                              private$num_cells_, 
                              private$inside_, 
-                             private$dx_, #matrix
+                             private$meshdistmat_, #was private$dx_, #matrix
                              dt, 
                              sd, 
                              nstates,
