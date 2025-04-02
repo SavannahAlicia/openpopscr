@@ -52,13 +52,13 @@ ScrTransientModel <- R6Class("ScrTransientModel",
         if(is.null(data$usermeshdistmat())){
           stop("For moving AC, you must include a non-Euclidean distance matrix for the mesh as well as traps to mesh.")
         } else {
-          private$noneuclidean <- TRUE
+          private$noneuclidean_ <- TRUE
         }
       } else {
-        private$noneuclidean <- FALSE
+        private$noneuclidean_ <- FALSE
       }
       
-      if(private$noneuclidean){
+      if(private$noneuclidean_){
         closest_dx <- max(apply(data$usermeshdistmat(), 1, function(mdr){min(mdr[mdr!=0])}))
         # Need to check that there aren't pts that can't trans to all others
         if(length(which(apply(data$usermeshdistmat(), 1, function(mdr){sum(mdr <= closest_dx)}) ==2)) > 1){
@@ -66,22 +66,25 @@ ScrTransientModel <- R6Class("ScrTransientModel",
         } # Non Euclidean distance requires different "inside" indexing
         ncol_inside <- max(apply(data$usermeshdistmat(),1, function(mdr){sum(mdr<= closest_dx)}))
       } else {
+        closest_dx <- (1 + 1e-6) * private$dx_
         ncol_inside <- 4 #at most 4 cells can be adjacent
+      }
+      
+      if(private$noneuclidean_){
+        private$meshdistmat_ <- private$data_$usermeshdistmat()
+      } else {
+        private$meshdistmat_ <- apply(private$data_$mesh(), 1, function(meshx){
+          sqrt((meshx[1] - private$data_$mesh()$x)^2 + 
+                 (meshx[2]- private$data_$mesh()$y)^2)})
       }
       
       private$data_ <- data
       private$dx_ <- attr(data$mesh(), "spacing")
       private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = ncol_inside)
       for (m in 1:data$n_meshpts()) {
-        if(private$noneuclidean){
-          dis <- data$usermeshdistmat()[m,]
-          # Which mesh pts are within radius such that all pts are connected
-          wh <- which(dis <= closest_dx & dis > 1e-16) - 1 #zero based indexing for Rcpp
-        } else {
-          dis <- sqrt((data$mesh()[m, 1] - data$mesh()[,1])^2 + (data$mesh()[m, 2] - data$mesh()[, 2])^2)
-          # Which mesh points are adjacent?
-          wh <- which(dis < (1 + 1e-6) * private$dx_ & dis > 1e-16) - 1 
-        }
+        dis <- private$meshdistmat_[m,]
+        # Which mesh pts are adjacent(e) or within radius such that all pts are connected (ne)
+        wh <- which(dis <= closest_dx & dis > 1e-16) - 1 #zero based indexing for Rcpp
         if(length(wh) > 0) private$inside_[m, 1:length(wh)] <- as.numeric(wh) 
       }
       box <- attributes(data$mesh())$boundingbox
@@ -145,7 +148,7 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                                tpms, 
                                private$num_cells_,
                                private$inside_, 
-                               private$dx_,
+                               private$dx_, #change
                                dt, 
                                sd,
                                nstates, 
@@ -192,7 +195,7 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                              tpms,
                              private$num_cells_, 
                              private$inside_, 
-                             private$dx_, 
+                             private$dx_, #change
                              dt, 
                              sd, 
                              nstates, 
@@ -212,6 +215,8 @@ ScrTransientModel <- R6Class("ScrTransientModel",
     dx_ = NULL, 
     inside_ = NULL,
     num_cells_ = NULL,
+    noneuclidean_ = NULL,
+    meshdistmat_ = NULL,
     
     initialise_par = function(start) {
       n_det_par <- private$detfn_$npars()

@@ -52,13 +52,13 @@ JsTransientModel <- R6Class("JsTransientModel",
           stop("For moving AC, you must include a non-Euclidean distance matrix for the mesh as well as traps to mesh.")
         } else {
           #Non Euclidean distance requires different "inside" indexing
-          private$noneuclidean <- TRUE
+          private$noneuclidean_ <- TRUE
         }
       } else {
-        private$noneuclidean <- FALSE
+        private$noneuclidean_ <- FALSE
       }
       
-      if(private$noneuclidean){
+      if(private$noneuclidean_){
         closest_dx <- max(apply(data$usermeshdistmat(), 1, function(mdr){min(mdr[mdr!=0])}))
         # Need to check that there aren't pts that can't trans to all others
         if(length(which(apply(data$usermeshdistmat(), 1, function(mdr){sum(mdr <= closest_dx)}) ==2)) > 1){
@@ -66,7 +66,15 @@ JsTransientModel <- R6Class("JsTransientModel",
         } # Non Euclidean distance requires different "inside" indexing
         ncol_inside <- max(apply(data$usermeshdistmat(),1, function(mdr){sum(mdr<= closest_dx)}))
       } else {
+        closest_dx <- (1 + 1e-6) * private$dx_
         ncol_inside <- 4 #at most 4 cells can be adjacent
+      }
+      if(private$noneuclidean_){
+        private$meshdistmat_ <- private$data_$usermeshdistmat()
+      } else {
+        private$meshdistmat_ <- apply(private$data_$mesh(), 1, function(meshx){
+          sqrt((meshx[1] - private$data_$mesh()$x)^2 + 
+                 (meshx[2]- private$data_$mesh()$y)^2)})
       }
      
       private$data_ <- data
@@ -74,15 +82,9 @@ JsTransientModel <- R6Class("JsTransientModel",
       private$dx_ <- attr(data$mesh(), "spacing")
       private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = ncol_inside) 
       for (m in 1:data$n_meshpts()) {
-        if(private$noneuclidean){
-          dis <- data$usermeshdistmat()[m,]
-          # Which mesh pts are within radius such that all pts are connected
+        dis <- private$meshdistmat_[m,]
+          # Which mesh pts are adjacent(e) or within radius such that all pts are connected (ne)
           wh <- which(dis <= closest_dx & dis > 1e-16) - 1 #zero based indexing for Rcpp
-        } else {
-          dis <- sqrt((data$mesh()[m, 1] - data$mesh()[,1])^2 + (data$mesh()[m, 2] - data$mesh()[, 2])^2)
-          # Which mesh points are adjacent?
-          wh <- which(dis < (1 + 1e-6) * private$dx_ & dis > 1e-16) - 1 
-        }
         if(length(wh) > 0) private$inside_[m, 1:length(wh)] <- as.numeric(wh) 
       }
       box <- attributes(data$mesh())$boundingbox
@@ -164,7 +166,7 @@ JsTransientModel <- R6Class("JsTransientModel",
                                tpms, 
                                private$num_cells_,
                                private$inside_, 
-                               private$dx_,
+                               private$dx_, # make this a meshdistmat
                                dt, 
                                sd,
                                nstates + 2,
@@ -201,7 +203,7 @@ JsTransientModel <- R6Class("JsTransientModel",
       n_occasions <- private$data_$n_occasions()
       n_meshpts <- private$data_$n_meshpts() 
       dt <- diff(self$data()$time())
-      sd <- as.matrix(self$get_par("sd", s = 1:self$state()$nstates(), m = 1))
+      sd <- as.matrix(self$get_par("sd", s = 1:self$state()$nstates(), m = 1)) 
       sd[is.na(sd)] <- -10
       if (any(sd > 10 * private$start_$sd)) return(-Inf)
       llk <- C_calc_move_llk(n, 
@@ -211,7 +213,7 @@ JsTransientModel <- R6Class("JsTransientModel",
                              tpms,
                              private$num_cells_, 
                              private$inside_, 
-                             private$dx_, 
+                             private$dx_, #matrix
                              dt, 
                              sd, 
                              nstates,
@@ -231,7 +233,8 @@ JsTransientModel <- R6Class("JsTransientModel",
     inside_ = NULL,
     num_cells_ = NULL,
     start_ = NULL, 
-    noneuclidean = NULL,
+    noneuclidean_ = NULL,
+    meshdistmat_ = NULL,
     
     initialise_par = function(start) {
       n_det_par <- private$detfn_$npars()
