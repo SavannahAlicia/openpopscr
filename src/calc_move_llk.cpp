@@ -20,7 +20,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // [[Rcpp::depends(RcppArmadillo)]]
-#define ARMA_DONT_PRINT_ERRORS
+//#define ARMA_DONT_PRINT_ERRORS
 #include <iostream>
 #include <RcppArmadillo.h>
 #include <RcppParallel.h>
