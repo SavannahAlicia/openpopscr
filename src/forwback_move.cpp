@@ -45,7 +45,7 @@ struct AlphaMoveCalculator : public Worker {
   const Rcpp::List tpms;
   const arma::vec num_cells; 
   const arma::vec inside; 
-  const double dx; 
+  const arma::mat meshdistmat; 
   const arma::vec dt; 
   const arma::mat sd; 
   const int num_states;
@@ -68,14 +68,14 @@ struct AlphaMoveCalculator : public Worker {
                       const Rcpp::List tpms,
                       const arma::vec num_cells, 
                       const arma::vec inside, 
-                      const double dx, 
+                      const arma::mat meshdistmat, 
                       const arma::vec dt, 
                       const arma::mat sd,
                       const int num_states,
                       const int minstate, 
                       const int maxstate, 
                       const arma::vec entry,
-                      arma::field<arma::cube>& lalpha) : n(n), J(J), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), lalpha(lalpha) {
+                      arma::field<arma::cube>& lalpha) : n(n), J(J), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), meshdistmat(meshdistmat), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), lalpha(lalpha) {
     if (num_states > 1) {
       tpm.resize(J); 
       for (int j = 0; j < J - 1; ++j) tpm[j] = Rcpp::as<arma::mat>(tpms[j]); 
@@ -84,7 +84,7 @@ struct AlphaMoveCalculator : public Worker {
     for (int j = 0; j < J - 1; ++j) {
       for (int g = minstate; g < minstate + num_states; ++g) {
         if (sd(j, g - minstate) < 0) continue; 
-        trm[g - minstate + j * num_states] = CalcTrm(num_cells, sd(j, g - minstate), dx, inside); 
+        trm[g - minstate + j * num_states] = CalcTrm(num_cells, sd(j, g - minstate), meshdistmat, inside); 
       }
     }
     pr_cap.resize(n);
@@ -139,7 +139,7 @@ struct AlphaMoveCalculator : public Worker {
 //' @param tpms output of calc_tpms() in JsModel
 //' @param num_cells number of cells in x,y,total 
 //' @param inside 0 if meshpt outside survey region, 1 otherwise 
-//' @param dx mesh spacing 
+//' @param meshdistmat mesh spacing 
 //' @param dt time between occasions 
 //' @param sd movement parameter for each occasion 
 //' @param num_states 2 = CJS model, 3 = JS model 
@@ -154,7 +154,7 @@ arma::field<arma::cube> C_calc_movealpha(const int n, const int J,
                                          const Rcpp::List tpms,
                                          const arma::vec num_cells, 
                                          const arma::vec inside, 
-                                         const double dx, 
+                                         const arma::mat meshdistmat, 
                                          const arma::vec dt, 
                                          const arma::mat sd, 
                                          const int num_states,
@@ -164,7 +164,7 @@ arma::field<arma::cube> C_calc_movealpha(const int n, const int J,
   
   arma::field<arma::cube> lalpha(n);
   for (int i = 0; i < n; ++i) lalpha(i) = arma::zeros<arma::cube>(num_cells(0), num_states, J); 
-  AlphaMoveCalculator alpha_calculator(n, J, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, entry, lalpha); 
+  AlphaMoveCalculator alpha_calculator(n, J, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, lalpha); 
   parallelFor(0, n, alpha_calculator, 1); 
   return(lalpha); 
 }
@@ -179,7 +179,7 @@ struct BetaMoveCalculator : public Worker {
   const Rcpp::List tpms;
   const arma::vec num_cells; 
   const arma::vec inside; 
-  const double dx; 
+  const arma::mat meshdistmat; 
   const arma::vec dt; 
   const arma::mat sd; 
   const int num_states;
@@ -202,14 +202,14 @@ struct BetaMoveCalculator : public Worker {
                      const Rcpp::List tpms,
                      const arma::vec num_cells, 
                      const arma::vec inside, 
-                     const double dx, 
+                     const arma::mat meshdistmat, 
                      const arma::vec dt, 
                      const arma::mat sd,
                      const int num_states,
                      const int minstate, 
                      const int maxstate, 
                      const arma::vec entry,
-                     arma::field<arma::cube>& lbeta) : n(n), J(J), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), lbeta(lbeta) {
+                     arma::field<arma::cube>& lbeta) : n(n), J(J), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), meshdistmat(meshdistmat), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), lbeta(lbeta) {
     if (num_states > 1) {
       tpm.resize(J); 
       for (int j = 0; j < J - 1; ++j) tpm[j] = Rcpp::as<arma::mat>(tpms[j]); 
@@ -218,7 +218,7 @@ struct BetaMoveCalculator : public Worker {
     for (int j = 0; j < J - 1; ++j) {
       for (int g = minstate; g < minstate + num_states; ++g) {
         if (sd(j, g - minstate) < 0) continue; 
-        trm[g - minstate + j * num_states] = CalcTrm(num_cells, sd(j, g - minstate), dx, inside); 
+        trm[g - minstate + j * num_states] = CalcTrm(num_cells, sd(j, g - minstate), meshdistmat, inside); 
         trm[g - minstate + j * num_states].t(); 
       }
     }
@@ -271,7 +271,7 @@ struct BetaMoveCalculator : public Worker {
 //' @param tpms output of calc_tpms() in JsModel
 //' @param num_cells number of cells in x,y,total 
 //' @param inside 0 if meshpt outside survey region, 1 otherwise 
-//' @param dx mesh spacing 
+//' @param meshdistmat mesh spacing 
 //' @param dt time between occasions 
 //' @param sd movement parameter for each occasion 
 //' @param num_states 2 = CJS model, 3 = JS model 
@@ -286,7 +286,7 @@ arma::field<arma::cube> C_calc_movebeta(const int n, const int J,
                                         const Rcpp::List tpms,
                                         const arma::vec num_cells, 
                                         const arma::vec inside, 
-                                        const double dx, 
+                                        const arma::mat meshdistmat, 
                                         const arma::vec dt, 
                                         const arma::mat sd, 
                                         const int num_states,
@@ -296,7 +296,7 @@ arma::field<arma::cube> C_calc_movebeta(const int n, const int J,
   
   arma::field<arma::cube> lbeta(n);
   for (int i = 0; i < n; ++i) lbeta(i) = arma::zeros<arma::cube>(num_cells(0), num_states, J); 
-  BetaMoveCalculator beta_calculator(n, J, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, entry, lbeta); 
+  BetaMoveCalculator beta_calculator(n, J, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, lbeta); 
   parallelFor(0, n, beta_calculator, 1); 
   return(lbeta); 
 }
