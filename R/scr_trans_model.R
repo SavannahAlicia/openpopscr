@@ -148,7 +148,7 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                                tpms, 
                                private$num_cells_,
                                private$inside_, 
-                               private$dx_, #change
+                               private$meshdistmat_, # was private$dx_, #change
                                dt, 
                                sd,
                                nstates, 
@@ -195,7 +195,7 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                              tpms,
                              private$num_cells_, 
                              private$inside_, 
-                             private$dx_, #change
+                             private$meshdistmat_, # was private$dx_, #change
                              dt, 
                              sd, 
                              nstates, 
