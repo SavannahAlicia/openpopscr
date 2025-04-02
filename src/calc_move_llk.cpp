@@ -30,8 +30,8 @@
 using namespace RcppParallel; 
 
 arma::sp_mat CalcTrm(const arma::vec num_cells, const double sd, const double dx, const arma::mat inside) {
-  arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0));
-  double rate = sd * sd / (2 * dx * dx);
+  arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0)); //sparse square matrix, dim number of mesh cells
+  double rate = sd * sd / (2 * dx * dx); //instead of double, this needs to be matrix mxm
   int s;
   double sum; 
   for (int s = 0; s < num_cells(0); ++s) {
@@ -47,14 +47,14 @@ arma::sp_mat CalcTrm(const arma::vec num_cells, const double sd, const double dx
   return tpr;
 }
 
-arma::vec ExpG(const arma::vec& v_in,
-                  const arma::sp_mat& a,
-                  const double& t,
-                  const int& krylov_dim,
-                  const double& tol) {
-  arma::rowvec v(v_in.t()); 
-  double m = fmin(a.n_rows, krylov_dim);
-  double anorm = arma::norm(a, "Inf");
+arma::vec ExpG(const arma::vec& v_in, //prob ch & m (for kp and s), length [m]
+                  const arma::sp_mat& a, //trm (for kp and s), dim [m x m]
+                  const double& t, //dt for kp
+                  const int& krylov_dim, //dimension of Krylov subspace for approx
+                  const double& tol) { //error tolerance for approx
+  arma::rowvec v(v_in.t()); //transposes v_in
+  double m = fmin(a.n_rows, krylov_dim); //Krylov subspace dim
+  double anorm = arma::norm(a, "Inf"); //infinity norm (max abs rowSum), should be +rate leaving m
   double mxrej = 10;
   double mx;
   double btol = 1.0e-7;
@@ -64,13 +64,13 @@ arma::vec ExpG(const arma::vec& v_in,
   double t_now = 0;
   double t_step;
   double delta = 1.2;
-  double t_out = fabs(t);
+  double t_out = fabs(t); //absolute value
   double s_error = 0;
   double rndoff = anorm * 1e-16;
   
   int k1 = 1;
   double xm = 1 / m;
-  double normv = norm(v);
+  double normv = norm(v); //Euclidean norm (if v is almost 0, don't bother)
   if (normv < 1e-16) return v_in; 
   double avnorm;
   double beta = normv;
@@ -167,14 +167,14 @@ arma::vec ExpG(const arma::vec& v_in,
   double err = s_error;
   hump = hump / normv;
   arma::vec v_out(w.t()); 
-  return v_out;
+  return v_out; 
 }
 
-struct MoveLlkCalculator : public Worker {
+struct MoveLlkCalculator : public Worker { //inherits parallelization
   
   // input 
   const int n; 
-  const int J;
+  const int Kp;
   const arma::mat pr0; 
   const Rcpp::List pr_capture; 
   const Rcpp::List tpms;
@@ -198,7 +198,8 @@ struct MoveLlkCalculator : public Worker {
   arma::vec& illk; 
   
   // initialiser
-  MoveLlkCalculator(const int n, const int J, 
+  MoveLlkCalculator(const int n, 
+                    const int Kp, //number of primary occasions
                 const arma::mat pr0, 
                 const Rcpp::List pr_capture, 
                 const Rcpp::List tpms,
@@ -211,42 +212,44 @@ struct MoveLlkCalculator : public Worker {
                 const int minstate, 
                 const int maxstate, 
                 const arma::vec entry,
-                arma::vec& illk) : n(n), J(J), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
+                arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
     if (num_states > 1) {
-      tpm.resize(J); 
-      for (int j = 0; j < J - 1; ++j) tpm[j] = Rcpp::as<arma::mat>(tpms[j]); 
+      tpm.resize(Kp); //length of vector (of matrices)
+      for (int kp = 0; kp < Kp 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
     }
     alivestates = num_states - minstate - maxstate; 
-    trm.resize(J * alivestates); 
-    for (int j = 0; j < J - 1; ++j) {
+    trm.resize(Kp * alivestates); //different transitions for each alive state
+    for (int kp = 0; kp < Kp - 1; ++kp) {
       for (int g = minstate; g < minstate + alivestates; ++g) {
-        if (sd(j, g - minstate) < 0) continue; 
-        trm[g - minstate + j * alivestates] = CalcTrm(num_cells, sd(j, g - minstate), dx, inside); 
+        if (sd(kp, g - minstate) < 0) continue; 
+        //trm is vector of matrices
+        trm[g - minstate + kp * alivestates] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside); //returns m x m sparse rate matrix
       }
     }
-    pr_cap.resize(n);
+    pr_cap.resize(n); //vector of cubes
     for (int i = 0; i < n; ++i) {
       Rcpp::NumericVector pr_capvec(pr_capture[i]);
-      arma::cube pr_icap(pr_capvec.begin(), num_cells(0), num_states, J, false);
-      pr_cap[i] = pr_icap;
+      arma::cube pr_icap(pr_capvec.begin(), num_cells(0), num_states, Kp, false);
+      pr_cap[i] = pr_icap; //shallow copy, restructure from list to vector
     }
   }
   
-  void operator()(std::size_t begin, std::size_t end) { 
+  void operator()(std::size_t begin, std::size_t end) { //set up parallel
     for (int i = begin; i < end; ++i) {
       double llk = 0;
       double sum_pr;
-      arma::mat pr = pr0;
-      arma::cube prcap;
-      for (int j = entry(i); j < J - 1; ++j) {
-        pr %= pr_cap[i].slice(j);
+      arma::mat pr = pr0; //initial distribution m x s
+      arma::cube prcap; //vector (length n) of prob capthist m x s x kp
+      for (int kp = entry(i); kp < Kp - 1; ++kp) { //entry is vector of 0's
+        pr %= pr_cap[i].slice(kp); //initial probability * pr capthist [m x s]
         if (num_states > 1) {
-          pr *= tpm[j];
+          pr *= tpm[kp]; //times transition probs (if multiple alive states)
         }
         for (int g = minstate; g < minstate + alivestates; ++g) {
-          if (sd(j, g - minstate) < 0) continue; 
+          if (sd(kp, g - minstate) < 0) continue; 
           try {
-            pr.col(g) = ExpG(pr.col(g), trm[g - minstate + j * alivestates], dt(j));
+            // for kp g, pr.col(g) is prob of ch & state [m] of s cols
+            pr.col(g) = ExpG(pr.col(g), trm[g - minstate + kp * alivestates], dt(kp));
           } catch(...) {
             llk = -arma::datum::inf;
           }
@@ -255,7 +258,7 @@ struct MoveLlkCalculator : public Worker {
         llk += log(sum_pr);
         pr /= sum_pr;
       }
-      pr %= pr_cap[i].slice(J - 1);
+      pr %= pr_cap[i].slice(Kp - 1);
       llk += log(accu(pr));
       illk(i) = llk;
     }
