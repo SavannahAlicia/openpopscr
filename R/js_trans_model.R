@@ -45,25 +45,44 @@ JsTransientModel <- R6Class("JsTransientModel",
     
     initialize = function(form, data, start, detectfn = NULL, statemod = NULL, print = TRUE) {
       private$check_input(form, data, start, detectfn, print)
-      #if user distance matrix, also need mesh distance matrix for moving AC
+      
+      # If user distance matrix, also need mesh distance matrix for moving AC
       if(!is.null(data$userdistmat())){
         if(is.null(data$usermeshdistmat())){
           stop("For moving AC, you must include a non-Euclidean distance matrix for the mesh as well as traps to mesh.")
         } else {
+          #Non Euclidean distance requires different "inside" indexing
           private$noneuclidean <- TRUE
         }
-      } else {private$noneuclidean <- FALSE}
+      } else {
+        private$noneuclidean <- FALSE
+      }
+      
+      if(private$noneuclidean){
+        closest_dx <- max(apply(data$usermeshdistmat(), 1, function(mdr){min(mdr[mdr!=0])}))
+        # Need to check that there aren't pts that can't trans to all others
+        if(length(which(apply(data$usermeshdistmat(), 1, function(mdr){sum(mdr <= closest_dx)}) ==2)) > 1){
+          closest_dx <- max(apply(data$usermeshdistmat(), 1, function(mdr){min(mdr[mdr > closest_dx])}))
+        } # Non Euclidean distance requires different "inside" indexing
+        ncol_inside <- max(apply(data$usermeshdistmat(),1, function(mdr){sum(mdr<= closest_dx)}))
+      } else {
+        ncol_inside <- 4 #at most 4 cells can be adjacent
+      }
+     
       private$data_ <- data
       private$start_ <- start 
       private$dx_ <- attr(data$mesh(), "spacing")
-      private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = 4)
+      private$inside_ <- matrix(-1, nr = data$n_meshpts(), nc = ncol_inside) 
       for (m in 1:data$n_meshpts()) {
         if(private$noneuclidean){
           dis <- data$usermeshdistmat()[m,]
+          # Which mesh pts are within radius such that all pts are connected
+          wh <- which(dis <= closest_dx & dis > 1e-16) - 1 #zero based indexing for Rcpp
         } else {
           dis <- sqrt((data$mesh()[m, 1] - data$mesh()[,1])^2 + (data$mesh()[m, 2] - data$mesh()[, 2])^2)
-         }
+          # Which mesh points are adjacent?
           wh <- which(dis < (1 + 1e-6) * private$dx_ & dis > 1e-16) - 1 
+        }
         if(length(wh) > 0) private$inside_[m, 1:length(wh)] <- as.numeric(wh) 
       }
       box <- attributes(data$mesh())$boundingbox
@@ -74,12 +93,12 @@ JsTransientModel <- R6Class("JsTransientModel",
       private$num_cells_[3] <- data$n_meshpts() / private$num_cells_[2]
       if (print) cat("Reading formulae.......")
       order <- c("phi", "beta", "sd", "D")
-      private$read_formula(form, detectfn, statemod, order)
+      private$read_formula(form, detectfn, statemod, order) #det pars, statemod
       # add other parameters type
-      private$par_type_[private$detfn_$npars() + 1] <- "p1ms"
-      private$par_type_[private$detfn_$npars() + 2] <- "pconms"
-      private$par_type_[private$detfn_$npars() + 3] <- "p1ms"
-      private$par_type_[private$detfn_$npars() + 4] <- "m"
+      private$par_type_[private$detfn_$npars() + 1] <- "p1ms" #phi
+      private$par_type_[private$detfn_$npars() + 2] <- "pconms" #beta
+      private$par_type_[private$detfn_$npars() + 3] <- "p1ms" #sd
+      private$par_type_[private$detfn_$npars() + 4] <- "m" #D
       names(private$form_) <- c(private$detfn_$pars(), "phi", "beta", "sd", "D")
       # make parameter list 
       private$make_par() 
