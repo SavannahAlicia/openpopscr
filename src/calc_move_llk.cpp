@@ -35,7 +35,8 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
                      const arma::mat inside) {
   arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0)); //sparse square matrix, dim number of mesh cells
   int icol = inside.n_cols;
-  //int s;
+  int s;
+  int i;
   double sum; 
   double rate;
   double dx;
