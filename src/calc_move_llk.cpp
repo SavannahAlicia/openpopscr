@@ -43,7 +43,7 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
     sum = 0; 
     for (int i = 0; i < icol; ++i) {
       if (inside(s, i) > -0.5) {
-        dx = meshdistmat(s, inside(s,i))
+        dx = meshdistmat(s, inside(s,i));
         rate = sd * sd / (2 * dx * dx); 
         tpr(s, inside(s, i)) = rate; 
         sum += rate; 
@@ -67,7 +67,7 @@ arma::vec ExpG(const arma::vec& v_in, //prob ch & m (for kp and s), length [m]
   double btol = 1.0e-7;
   double gamma = 0.9;
   double mb = m;
-  int nstep = 0;
+  //int nstep = 0;
   double t_now = 0;
   double t_step;
   double delta = 1.2;
@@ -171,7 +171,7 @@ arma::vec ExpG(const arma::vec& v_in, //prob ch & m (for kp and s), length [m]
     err_loc = fmax(err_loc, rndoff);
     s_error += err_loc;
   }
-  double err = s_error;
+  //double err = s_error;
   hump = hump / normv;
   arma::vec v_out(w.t()); 
   return v_out; 
