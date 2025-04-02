@@ -42,7 +42,7 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
   double dx;
   for (int s = 0; s < num_cells(0); ++s) {
     sum = 0; 
-    for (int i = 0; i < icol; ++i) {
+    for (int i = 0; i < (icol - 1); ++i) {
       if (inside(s, i) > -0.5) {
         dx = meshdistmat(s, inside(s,i));
         rate = sd * sd / (2 * dx * dx); 
