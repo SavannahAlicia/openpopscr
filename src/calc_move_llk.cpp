@@ -29,15 +29,22 @@
 
 using namespace RcppParallel; 
 
-arma::sp_mat CalcTrm(const arma::vec num_cells, const double sd, const double dx, const arma::mat inside) {
+arma::sp_mat CalcTrm(const arma::vec num_cells, 
+                     const double sd, 
+                     const arma::mat meshdistmat, 
+                     const arma::mat inside) {
   arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0)); //sparse square matrix, dim number of mesh cells
-  double rate = sd * sd / (2 * dx * dx); //instead of double, this needs to be matrix mxm
+  int icol = inside.n_cols;
   int s;
   double sum; 
+  double rate;
+  double dx;
   for (int s = 0; s < num_cells(0); ++s) {
     sum = 0; 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < icol; ++i) {
       if (inside(s, i) > -0.5) {
+        dx = meshdistmat(s, inside(s,i))
+        rate = sd * sd / (2 * dx * dx); 
         tpr(s, inside(s, i)) = rate; 
         sum += rate; 
       }
@@ -180,7 +187,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
   const Rcpp::List tpms;
   const arma::vec num_cells; 
   const arma::mat inside; 
-  const double dx; 
+  const arma::mat meshdistmat; //distmat
   const arma::vec dt; 
   const arma::mat sd; 
   const int num_states;
@@ -205,14 +212,14 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
                 const Rcpp::List tpms,
                 const arma::vec num_cells, 
                 const arma::mat inside, 
-                const double dx, 
+                const arma::mat meshdistmat, 
                 const arma::vec dt, 
                 const arma::mat sd,
                 const int num_states,
                 const int minstate, 
                 const int maxstate, 
                 const arma::vec entry,
-                arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
+                arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), meshdistmat(meshdistmat), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
     if (num_states > 1) {
       tpm.resize(Kp); //length of vector (of matrices)
       for (int kp = 0; kp < Kp 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
@@ -223,7 +230,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
       for (int g = minstate; g < minstate + alivestates; ++g) {
         if (sd(kp, g - minstate) < 0) continue; 
         //trm is vector of matrices
-        trm[g - minstate + kp * alivestates] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside); //returns m x m sparse rate matrix
+        trm[g - minstate + kp * alivestates] = CalcTrm(num_cells, sd(kp, g - minstate), meshdistmat, inside); //returns m x m sparse rate matrix
       }
     }
     pr_cap.resize(n); //vector of cubes
@@ -275,7 +282,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
 //' @param tpms output of calc_tpms() in JsModel
 //' @param num_cells number of cells in x,y,total 
 //' @param inside 0 if meshpt outside survey region, 1 otherwise 
-//' @param dx mesh spacing 
+//' @param meshdistmat m x m distance between mesh 
 //' @param dt time between occasions 
 //' @param sd movement parameter for each occasion 
 //' @param num_states 2 = CJS model, 3 = JS model 
@@ -290,7 +297,7 @@ double C_calc_move_llk(const int n, const int J,
                        const Rcpp::List tpms,
                        const arma::vec num_cells, 
                        const arma::mat inside, 
-                       const double dx, 
+                       const arma::mat meshdistmat, 
                        const arma::vec dt, 
                        const arma::mat sd, 
                        const int num_states,
@@ -299,7 +306,7 @@ double C_calc_move_llk(const int n, const int J,
                        const arma::vec entry) {
   
   arma::vec illk(n);
-  MoveLlkCalculator move_llk_calulator(n, J, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, entry, illk); 
+  MoveLlkCalculator move_llk_calulator(n, J, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, illk); 
   parallelFor(0, n, move_llk_calulator, 10); 
   return(arma::accu(illk)); 
 }
@@ -312,7 +319,7 @@ double C_calc_move_llk(const int n, const int J,
 //' @param tpms output of calc_tpms() in JsModel
 //' @param num_cells number of cells in x,y,total 
 //' @param inside 0 if meshpt outside survey region, 1 otherwise 
-//' @param dx mesh spacing 
+//' @param meshdistmat m x m distance matrix for mesh
 //' @param dt time between occasions 
 //' @param sd movement parameter for each occasion 
 //' @param num_states 2 = CJS model, 3 = JS model 
@@ -326,7 +333,7 @@ double C_calc_move_pdet(const int J,
                    Rcpp::List tpms,
                    const arma::vec num_cells, 
                    const arma::mat inside, 
-                   const double dx, 
+                   const arma::meshdistmat, 
                    const arma::vec dt,
                    const arma::mat sd, 
                    const int num_states, 
@@ -351,7 +358,7 @@ double C_calc_move_pdet(const int J,
     }
     for (int g = minstate; g < minstate + alivestates; ++g) {
       if (sd(j, g - minstate) < 0) continue; 
-      trm = CalcTrm(num_cells, sd(j, g - minstate), dx, inside);
+      trm = CalcTrm(num_cells, sd(j, g - minstate), meshdistmat, inside);
       try {
         pr.col(g) = ExpG(pr.col(g), trm, dt(j)); 
       } catch(...) {
