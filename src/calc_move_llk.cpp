@@ -292,7 +292,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
 //' @return log-likelihood value 
 //' 
 // [[Rcpp::export]]
-double C_calc_move_llk(const int n, const int J,
+double C_calc_move_llk(const int n, const int Kp,
                        const arma::mat pr0, 
                        const Rcpp::List pr_capture, 
                        const Rcpp::List tpms,
@@ -307,7 +307,7 @@ double C_calc_move_llk(const int n, const int J,
                        const arma::vec entry) {
   
   arma::vec illk(n);
-  MoveLlkCalculator move_llk_calulator(n, J, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, illk); 
+  MoveLlkCalculator move_llk_calulator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, illk); 
   parallelFor(0, n, move_llk_calulator, 10); 
   return(arma::accu(illk)); 
 }
