@@ -58,6 +58,7 @@ ScrTransientModel <- R6Class("ScrTransientModel",
         private$noneuclidean_ <- FALSE
       }
       private$data_ <- data
+      private$start_ <- start 
       private$dx_ <- attr(data$mesh(), "spacing")
       
       if(private$noneuclidean_){
