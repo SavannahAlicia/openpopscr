@@ -219,7 +219,7 @@ struct BetaMoveCalculator : public Worker {
       for (int g = minstate; g < minstate + num_states; ++g) {
         if (sd(j, g - minstate) < 0) continue; 
         trm[g - minstate + j * num_states] = CalcTrm(num_cells, sd(j, g - minstate), meshdistmat, inside); 
-        trm[g - minstate + j * num_states].t(); 
+       // trm[g - minstate + j * num_states].t(); 
       }
     }
     pr_cap.resize(n);
