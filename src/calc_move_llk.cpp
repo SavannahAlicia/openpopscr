@@ -20,7 +20,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // [[Rcpp::depends(RcppArmadillo)]]
-//#define ARMA_DONT_PRINT_ERRORS
+#define ARMA_DONT_PRINT_ERRORS
 #include <iostream>
 #include <RcppArmadillo.h>
 #include <RcppParallel.h>
@@ -172,7 +172,7 @@ arma::vec ExpG(const arma::vec& v_in, //prob ch & m (for kp and s), length [m]
     err_loc = fmax(err_loc, rndoff);
     s_error += err_loc;
   }
-  //double err = s_error;
+  double err = s_error;
   hump = hump / normv;
   arma::vec v_out(w.t()); 
   return v_out; 
@@ -188,7 +188,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
   const Rcpp::List tpms;
   const arma::vec num_cells; 
   const arma::mat inside; 
-  const arma::mat meshdistmat; //distmat
+  const arma::mat meshdistmat;
   const arma::vec dt; 
   const arma::mat sd; 
   const int num_states;
@@ -277,7 +277,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
 //' Computes log-likelihood 
 //'
 //' @param n number of individuals 
-//' @param J total number of occasions 
+//' @param Kp total number of occasions 
 //' @param pr0 initial distribution over life states
 //' @param pr_capture output of calc_pr_capture() in JsModel
 //' @param tpms output of calc_tpms() in JsModel
@@ -314,7 +314,7 @@ double C_calc_move_llk(const int n, const int Kp,
 
 //' Computes detection probability (seen at least once) for Jolly-Seber model 
 //'
-//' @param J total number of occasions 
+//' @param Kp total number of occasions 
 //' @param pr0 initial distribution over life states
 //' @param pr_captures list of empty capture histories, see calc_pdet() in JsModel
 //' @param tpms output of calc_tpms() in JsModel
@@ -328,7 +328,7 @@ double C_calc_move_llk(const int n, const int Kp,
 //' @return pdet = probability seen at some time on the survey 
 //' 
 // [[Rcpp::export]]
-double C_calc_move_pdet(const int J, 
+double C_calc_move_pdet(const int Kp, 
                    arma::mat pr0, 
                    Rcpp::List pr_captures,
                    Rcpp::List tpms,
@@ -350,18 +350,18 @@ double C_calc_move_pdet(const int J,
   int alive_col = 0; 
   int alivestates = num_states - minstate - maxstate; 
   if (num_states > 2) alive_col = 1; 
-  for (int j = 0; j < J - 1; ++j) {
-    pr_capture = Rcpp::as<arma::mat>(pr_captures[j]);
+  for (int kp = 0; kp < Kp - 1; ++kp) {
+    pr_capture = Rcpp::as<arma::mat>(pr_captures[kp]);
     pr %= pr_capture;
     if (num_states > 1) {
-      tpm = Rcpp::as<arma::mat>(tpms[j]); 
+      tpm = Rcpp::as<arma::mat>(tpms[kp]); 
       pr *= tpm; 
     }
     for (int g = minstate; g < minstate + alivestates; ++g) {
-      if (sd(j, g - minstate) < 0) continue; 
-      trm = CalcTrm(num_cells, sd(j, g - minstate), meshdistmat, inside);
+      if (sd(kp, g - minstate) < 0) continue; 
+      trm = CalcTrm(num_cells, sd(kp, g - minstate), meshdistmat, inside);
       try {
-        pr.col(g) = ExpG(pr.col(g), trm, dt(j)); 
+        pr.col(g) = ExpG(pr.col(g), trm, dt(kp)); 
       } catch(...) {
         return -arma::datum::inf; 
       }
@@ -370,7 +370,7 @@ double C_calc_move_pdet(const int J,
     pdet += log(sum_pr); 
     pr /= sum_pr; 
   }
-  pr_capture = Rcpp::as<arma::mat>(pr_captures[J - 1]);
+  pr_capture = Rcpp::as<arma::mat>(pr_captures[Kp - 1]);
   pr %= pr_capture;
   pdet += log(accu(pr)); 
   pdet = exp(pdet); 
