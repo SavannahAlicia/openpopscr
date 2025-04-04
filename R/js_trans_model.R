@@ -170,12 +170,13 @@ JsTransientModel <- R6Class("JsTransientModel",
                                tpms, 
                                private$num_cells_,
                                private$inside_, 
-                               private$meshdistmat_, # was private$dx_, # make this a meshdistmat
+                               private$dx, # was private$dx_, # make this a meshdistmat
                                dt, 
                                sd,
                                nstates + 2,
                                1, 
-                               1); 
+                               1,
+                               private$meshdistmat_); 
       a <- private$data_$cell_area()
       D <- self$get_par("D", m = 1:private$data_$n_meshpts()) * a
       Dpdet <- sum(D) - Dpdet
@@ -217,12 +218,13 @@ JsTransientModel <- R6Class("JsTransientModel",
                              tpms,
                              private$num_cells_, 
                              private$inside_, 
-                             private$meshdistmat_, #was private$dx_, #matrix
+                             private$dx_, #was private$dx_, #matrix
                              dt, 
                              sd, 
                              nstates,
                              1, 
                              1,
+                             private$meshdistmat_,
                              rep(0, private$data_$n()))
       # compute log-likelihood
       llk <- llk - n * log(self$calc_Dpdet())

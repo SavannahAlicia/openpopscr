@@ -149,12 +149,13 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                                tpms, 
                                private$num_cells_,
                                private$inside_, 
-                               private$meshdistmat_, # was private$dx_, #change
+                               private$dx, # was private$dx_, #change
                                dt, 
                                sd,
                                nstates, 
                                0, 
-                               0); 
+                               0,
+                               private$meshdistmat_); 
       a <- private$data_$cell_area() 
       D <- self$get_par("D", m = 1:private$data_$n_meshpts()) * a
       Dpdet <- sum(D) - Dpdet 
@@ -196,12 +197,13 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                              tpms,
                              private$num_cells_, 
                              private$inside_, 
-                             private$meshdistmat_, # was private$dx_, #change
+                             private$dx_, # was private$dx_, #change
                              dt, 
                              sd, 
                              nstates, 
                              0, 
                              0,
+                             private$meshdistmat_,
                              rep(0, private$data_$n()))
       # compute log-likelihood
       llk <- llk - n * log(self$calc_Dpdet())

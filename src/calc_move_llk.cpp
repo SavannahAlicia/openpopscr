@@ -31,23 +31,20 @@ using namespace RcppParallel;
 
 arma::sp_mat CalcTrm(const arma::vec num_cells, 
                      const double sd, 
-                     const arma::mat meshdistmat, 
-                     const arma::mat inside) {
+                     const double dx, 
+                     const arma::mat inside,
+                     const arma::mat meshdistmat) {
   arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0)); //sparse square matrix, dim number of mesh cells
   int icol = inside.n_cols;
-  int s;
-  int i;
+  //arma::mat meshdistmat(num_cells(0), num_cells(0), arma::fill::value(dx));
   double sum; 
-  double rate;
-  double dx;
   for (int s = 0; s < num_cells(0); ++s) {
     sum = 0; 
-    for (int i = 0; i < (icol); ++i) {
+    for (int i = 0; i < icol; ++i) {
       if (inside(s, i) > -0.5) {
-        dx = meshdistmat(s, inside(s,i));
-        rate = sd * sd / (2 * dx * dx); 
-        tpr(s, inside(s, i)) = rate; 
-        sum += rate; 
+        //rate
+        tpr(s, inside(s, i)) = sd * sd / (2 * meshdistmat(s, inside(s, i)) * meshdistmat(s, inside(s, i)));
+        sum += tpr(s, inside(s, i)); 
       }
     }
     tpr(s, s) = -sum; 
@@ -182,18 +179,19 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
   
   // input 
   const int n; 
-  const int J;
+  const int Kp;
   const arma::mat pr0; 
   const Rcpp::List pr_capture; 
   const Rcpp::List tpms;
   const arma::vec num_cells; 
   const arma::mat inside; 
-  const arma::mat meshdistmat;
+  const double dx; 
   const arma::vec dt; 
   const arma::mat sd; 
   const int num_states;
   const int minstate; 
   const int maxstate; 
+  const arma::mat meshdistmat;
   const arma::vec entry; 
   
   // transform 
@@ -207,37 +205,38 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
   
   // initialiser
   MoveLlkCalculator(const int n, 
-                    const int J, //number of primary occasions
+                    const int Kp, //number of primary occasions
                 const arma::mat pr0, 
                 const Rcpp::List pr_capture, 
                 const Rcpp::List tpms,
                 const arma::vec num_cells, 
                 const arma::mat inside, 
-                const arma::mat meshdistmat, 
+                const double dx, 
                 const arma::vec dt, 
                 const arma::mat sd,
                 const int num_states,
                 const int minstate, 
                 const int maxstate, 
+                const arma::mat meshdistmat,
                 const arma::vec entry,
-                arma::vec& illk) : n(n), J(J), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), meshdistmat(meshdistmat), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
+                arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), meshdistmat(meshdistmat), entry(entry), illk(illk) {
     if (num_states > 1) {
-      tpm.resize(J); //length of vector (of matrices)
-      for (int kp = 0; kp < J - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
+      tpm.resize(Kp);  //length of vector (of matrices)
+      for (int kp = 0; kp < Kp - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
     }
     alivestates = num_states - minstate - maxstate; 
-    trm.resize(J * alivestates); //different transitions for each alive state
-    for (int kp = 0; kp < J - 1; ++kp) {
+    trm.resize(Kp * alivestates);  //different transitions for each alive state
+    for (int kp = 0; kp < Kp - 1; ++kp) {
       for (int g = minstate; g < minstate + alivestates; ++g) {
         if (sd(kp, g - minstate) < 0) continue; 
         //trm is vector of matrices
-        trm[g - minstate + kp * alivestates] = CalcTrm(num_cells, sd(kp, g - minstate), meshdistmat, inside); //returns m x m sparse rate matrix
+        trm[g - minstate + kp * alivestates] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, meshdistmat);  //returns m x m sparse rate matrix
       }
     }
     pr_cap.resize(n); //vector of cubes
     for (int i = 0; i < n; ++i) {
       Rcpp::NumericVector pr_capvec(pr_capture[i]);
-      arma::cube pr_icap(pr_capvec.begin(), num_cells(0), num_states, J, false);
+      arma::cube pr_icap(pr_capvec.begin(), num_cells(0), num_states, Kp, false);
       pr_cap[i] = pr_icap; //shallow copy, restructure from list to vector
     }
   }
@@ -248,7 +247,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
       double sum_pr;
       arma::mat pr = pr0; //initial distribution m x s
       arma::cube prcap; //vector (length n) of prob capthist m x s x kp
-      for (int kp = entry(i); kp < J - 1; ++kp) { //entry is vector of 0's
+      for (int kp = entry(i); kp < Kp - 1; ++kp) { //entry is vector of 0's
         pr %= pr_cap[i].slice(kp); //initial probability * pr capthist [m x s]
         if (num_states > 1) {
           pr *= tpm[kp]; //times transition probs (if multiple alive states)
@@ -266,7 +265,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
         llk += log(sum_pr);
         pr /= sum_pr;
       }
-      pr %= pr_cap[i].slice(J - 1);
+      pr %= pr_cap[i].slice(Kp - 1);
       llk += log(accu(pr));
       illk(i) = llk;
     }
@@ -277,13 +276,13 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
 //' Computes log-likelihood 
 //'
 //' @param n number of individuals 
-//' @param J total number of occasions 
+//' @param Kp total number of occasions 
 //' @param pr0 initial distribution over life states
 //' @param pr_capture output of calc_pr_capture() in JsModel
 //' @param tpms output of calc_tpms() in JsModel
 //' @param num_cells number of cells in x,y,total 
 //' @param inside 0 if meshpt outside survey region, 1 otherwise 
-//' @param meshdistmat m x m distance between mesh 
+//' @param dx mesh spacing 
 //' @param dt time between occasions 
 //' @param sd movement parameter for each occasion 
 //' @param num_states 2 = CJS model, 3 = JS model 
@@ -292,35 +291,36 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
 //' @return log-likelihood value 
 //' 
 // [[Rcpp::export]]
-double C_calc_move_llk(const int n, const int J,
+double C_calc_move_llk(const int n, const int Kp,
                        const arma::mat pr0, 
                        const Rcpp::List pr_capture, 
                        const Rcpp::List tpms,
                        const arma::vec num_cells, 
                        const arma::mat inside, 
-                       const arma::mat meshdistmat, 
+                       const double dx, 
                        const arma::vec dt, 
                        const arma::mat sd, 
                        const int num_states,
                        const int minstate, 
                        const int maxstate, 
+                       const arma::mat meshdistmat,
                        const arma::vec entry) {
   
   arma::vec illk(n);
-  MoveLlkCalculator move_llk_calulator(n, J, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, illk); 
+  MoveLlkCalculator move_llk_calulator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry, illk); 
   parallelFor(0, n, move_llk_calulator, 10); 
   return(arma::accu(illk)); 
 }
 
 //' Computes detection probability (seen at least once) for Jolly-Seber model 
 //'
-//' @param J total number of occasions 
+//' @param Kp total number of occasions 
 //' @param pr0 initial distribution over life states
 //' @param pr_captures list of empty capture histories, see calc_pdet() in JsModel
 //' @param tpms output of calc_tpms() in JsModel
 //' @param num_cells number of cells in x,y,total 
 //' @param inside 0 if meshpt outside survey region, 1 otherwise 
-//' @param meshdistmat m x m distance matrix for mesh
+//' @param dx mesh spacing 
 //' @param dt time between occasions 
 //' @param sd movement parameter for each occasion 
 //' @param num_states 2 = CJS model, 3 = JS model 
@@ -328,18 +328,19 @@ double C_calc_move_llk(const int n, const int J,
 //' @return pdet = probability seen at some time on the survey 
 //' 
 // [[Rcpp::export]]
-double C_calc_move_pdet(const int J, 
+double C_calc_move_pdet(const int Kp, 
                    arma::mat pr0, 
                    Rcpp::List pr_captures,
                    Rcpp::List tpms,
                    const arma::vec num_cells, 
                    const arma::mat inside, 
-                   const arma::mat meshdistmat, 
+                   const double dx, 
                    const arma::vec dt,
                    const arma::mat sd, 
                    const int num_states, 
                    const int minstate, 
-                   const int maxstate) {
+                   const int maxstate,
+                   const arma::mat meshdistmat) {
   
   double pdet = 0; 
   arma::mat pr(pr0);
@@ -350,7 +351,7 @@ double C_calc_move_pdet(const int J,
   int alive_col = 0; 
   int alivestates = num_states - minstate - maxstate; 
   if (num_states > 2) alive_col = 1; 
-  for (int kp = 0; kp < J - 1; ++kp) {
+  for (int kp = 0; kp < Kp - 1; ++kp) {
     pr_capture = Rcpp::as<arma::mat>(pr_captures[kp]);
     pr %= pr_capture;
     if (num_states > 1) {
@@ -359,7 +360,7 @@ double C_calc_move_pdet(const int J,
     }
     for (int g = minstate; g < minstate + alivestates; ++g) {
       if (sd(kp, g - minstate) < 0) continue; 
-      trm = CalcTrm(num_cells, sd(kp, g - minstate), meshdistmat, inside);
+      trm = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, meshdistmat);
       try {
         pr.col(g) = ExpG(pr.col(g), trm, dt(kp)); 
       } catch(...) {
@@ -370,7 +371,7 @@ double C_calc_move_pdet(const int J,
     pdet += log(sum_pr); 
     pr /= sum_pr; 
   }
-  pr_capture = Rcpp::as<arma::mat>(pr_captures[J - 1]);
+  pr_capture = Rcpp::as<arma::mat>(pr_captures[Kp - 1]);
   pr %= pr_capture;
   pdet += log(accu(pr)); 
   pdet = exp(pdet); 

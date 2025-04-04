@@ -155,12 +155,13 @@ CjsTransientModel <- R6Class("CjsTransientModel",
                              tpms,
                              private$num_cells_, 
                              private$inside_, 
-                             private$meshdistmat_,
+                             private$dx_,
                              dt, 
                              sd, 
                              nstates,
                              0, 
                              1,
+                             private$meshdistmat_,
                              private$entry_)
       # compute probability of initial detection
       inipdet <- self$calc_initial_pdet(pr_capture) 
