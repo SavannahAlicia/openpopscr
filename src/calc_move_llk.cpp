@@ -182,7 +182,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
   
   // input 
   const int n; 
-  const int Kp;
+  const int J;
   const arma::mat pr0; 
   const Rcpp::List pr_capture; 
   const Rcpp::List tpms;
@@ -207,7 +207,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
   
   // initialiser
   MoveLlkCalculator(const int n, 
-                    const int Kp, //number of primary occasions
+                    const int J, //number of primary occasions
                 const arma::mat pr0, 
                 const Rcpp::List pr_capture, 
                 const Rcpp::List tpms,
@@ -220,14 +220,14 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
                 const int minstate, 
                 const int maxstate, 
                 const arma::vec entry,
-                arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), meshdistmat(meshdistmat), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
+                arma::vec& illk) : n(n), J(J), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), meshdistmat(meshdistmat), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), entry(entry), illk(illk) {
     if (num_states > 1) {
-      tpm.resize(Kp); //length of vector (of matrices)
-      for (int kp = 0; kp < Kp - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
+      tpm.resize(J); //length of vector (of matrices)
+      for (int kp = 0; kp < J - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
     }
     alivestates = num_states - minstate - maxstate; 
-    trm.resize(Kp * alivestates); //different transitions for each alive state
-    for (int kp = 0; kp < Kp - 1; ++kp) {
+    trm.resize(J * alivestates); //different transitions for each alive state
+    for (int kp = 0; kp < J - 1; ++kp) {
       for (int g = minstate; g < minstate + alivestates; ++g) {
         if (sd(kp, g - minstate) < 0) continue; 
         //trm is vector of matrices
@@ -237,7 +237,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
     pr_cap.resize(n); //vector of cubes
     for (int i = 0; i < n; ++i) {
       Rcpp::NumericVector pr_capvec(pr_capture[i]);
-      arma::cube pr_icap(pr_capvec.begin(), num_cells(0), num_states, Kp, false);
+      arma::cube pr_icap(pr_capvec.begin(), num_cells(0), num_states, J, false);
       pr_cap[i] = pr_icap; //shallow copy, restructure from list to vector
     }
   }
@@ -248,7 +248,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
       double sum_pr;
       arma::mat pr = pr0; //initial distribution m x s
       arma::cube prcap; //vector (length n) of prob capthist m x s x kp
-      for (int kp = entry(i); kp < Kp - 1; ++kp) { //entry is vector of 0's
+      for (int kp = entry(i); kp < J - 1; ++kp) { //entry is vector of 0's
         pr %= pr_cap[i].slice(kp); //initial probability * pr capthist [m x s]
         if (num_states > 1) {
           pr *= tpm[kp]; //times transition probs (if multiple alive states)
@@ -266,7 +266,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
         llk += log(sum_pr);
         pr /= sum_pr;
       }
-      pr %= pr_cap[i].slice(Kp - 1);
+      pr %= pr_cap[i].slice(J - 1);
       llk += log(accu(pr));
       illk(i) = llk;
     }
@@ -277,7 +277,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
 //' Computes log-likelihood 
 //'
 //' @param n number of individuals 
-//' @param Kp total number of occasions 
+//' @param J total number of occasions 
 //' @param pr0 initial distribution over life states
 //' @param pr_capture output of calc_pr_capture() in JsModel
 //' @param tpms output of calc_tpms() in JsModel
@@ -292,7 +292,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
 //' @return log-likelihood value 
 //' 
 // [[Rcpp::export]]
-double C_calc_move_llk(const int n, const int Kp,
+double C_calc_move_llk(const int n, const int J,
                        const arma::mat pr0, 
                        const Rcpp::List pr_capture, 
                        const Rcpp::List tpms,
@@ -307,14 +307,14 @@ double C_calc_move_llk(const int n, const int Kp,
                        const arma::vec entry) {
   
   arma::vec illk(n);
-  MoveLlkCalculator move_llk_calulator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, illk); 
+  MoveLlkCalculator move_llk_calulator(n, J, pr0, pr_capture, tpms, num_cells, inside, meshdistmat, dt, sd, num_states, minstate, maxstate, entry, illk); 
   parallelFor(0, n, move_llk_calulator, 10); 
   return(arma::accu(illk)); 
 }
 
 //' Computes detection probability (seen at least once) for Jolly-Seber model 
 //'
-//' @param Kp total number of occasions 
+//' @param J total number of occasions 
 //' @param pr0 initial distribution over life states
 //' @param pr_captures list of empty capture histories, see calc_pdet() in JsModel
 //' @param tpms output of calc_tpms() in JsModel
@@ -328,7 +328,7 @@ double C_calc_move_llk(const int n, const int Kp,
 //' @return pdet = probability seen at some time on the survey 
 //' 
 // [[Rcpp::export]]
-double C_calc_move_pdet(const int Kp, 
+double C_calc_move_pdet(const int J, 
                    arma::mat pr0, 
                    Rcpp::List pr_captures,
                    Rcpp::List tpms,
@@ -350,7 +350,7 @@ double C_calc_move_pdet(const int Kp,
   int alive_col = 0; 
   int alivestates = num_states - minstate - maxstate; 
   if (num_states > 2) alive_col = 1; 
-  for (int kp = 0; kp < Kp - 1; ++kp) {
+  for (int kp = 0; kp < J - 1; ++kp) {
     pr_capture = Rcpp::as<arma::mat>(pr_captures[kp]);
     pr %= pr_capture;
     if (num_states > 1) {
@@ -370,7 +370,7 @@ double C_calc_move_pdet(const int Kp,
     pdet += log(sum_pr); 
     pr /= sum_pr; 
   }
-  pr_capture = Rcpp::as<arma::mat>(pr_captures[Kp - 1]);
+  pr_capture = Rcpp::as<arma::mat>(pr_captures[J - 1]);
   pr %= pr_capture;
   pdet += log(accu(pr)); 
   pdet = exp(pdet); 
