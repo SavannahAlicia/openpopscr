@@ -62,8 +62,8 @@ C_calc_pdet <- function(J, pr0, pr_captures, tpms, num_states) {
 #'
 #' @return log-likelihood value 
 #' 
-C_calc_move_llk <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry) {
-    .Call(`_openpopscr_C_calc_move_llk`, n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry)
+C_calc_move_llk <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry) {
+    .Call(`_openpopscr_C_calc_move_llk`, n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry)
 }
 
 #' Computes detection probability (seen at least once) for Jolly-Seber model 

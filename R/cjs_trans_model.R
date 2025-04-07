@@ -161,6 +161,7 @@ CjsTransientModel <- R6Class("CjsTransientModel",
                              nstates,
                              0, 
                              1,
+                             private$noneuclidean_,
                              private$meshdistmat_,
                              private$entry_)
       # compute probability of initial detection

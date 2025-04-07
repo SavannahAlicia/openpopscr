@@ -51,7 +51,7 @@ struct AlphaMoveCalculator : public Worker {
   const int num_states;
   const int minstate; 
   const int maxstate; 
-  bool is_noneuc;
+  const bool is_noneuc;
   const arma::mat meshdistmat; 
   const arma::vec entry; 
   
@@ -76,7 +76,7 @@ struct AlphaMoveCalculator : public Worker {
                       const int num_states,
                       const int minstate, 
                       const int maxstate, 
-                      bool is_noneuc,
+                      const bool is_noneuc,
                       const arma::mat meshdistmat,
                       const arma::vec entry,
                       arma::field<arma::cube>& lalpha) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), is_noneuc(is_noneuc), meshdistmat(meshdistmat), entry(entry), lalpha(lalpha) {
@@ -164,7 +164,7 @@ arma::field<arma::cube> C_calc_movealpha(const int n, const int Kp,
                                          const int num_states,
                                          const int minstate, 
                                          const int maxstate, 
-                                         bool is_noneuc,
+                                         const bool is_noneuc,
                                          const arma::mat meshdistmat,
                                          const arma::vec entry) {
   
@@ -191,7 +191,7 @@ struct BetaMoveCalculator : public Worker {
   const int num_states;
   const int minstate; 
   const int maxstate; 
-  bool is_noneuc;
+  const bool is_noneuc;
   const arma::mat meshdistmat;
   const arma::vec entry; 
   
@@ -216,7 +216,7 @@ struct BetaMoveCalculator : public Worker {
                      const int num_states,
                      const int minstate, 
                      const int maxstate, 
-                     bool is_noneuc,
+                     const bool is_noneuc,
                      const arma::mat meshdistmat,
                      const arma::vec entry,
                      arma::field<arma::cube>& lbeta) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), is_noneuc(is_noneuc), meshdistmat(meshdistmat), entry(entry), lbeta(lbeta) {
@@ -303,7 +303,7 @@ arma::field<arma::cube> C_calc_movebeta(const int n,
                                         const int num_states,
                                         const int minstate, 
                                         const int maxstate, 
-                                        bool is_noneuc,
+                                        const bool is_noneuc,
                                         const arma::mat meshdistmat,
                                         const arma::vec entry) {
   

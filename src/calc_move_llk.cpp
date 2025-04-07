@@ -34,12 +34,11 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
                      const double sd, 
                      const double dx, 
                      const arma::mat inside,
-                     bool is_noneuc,
+                     const bool is_noneuc,
                      const arma::mat meshdistmat) {
   arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0)); //sparse square matrix, dim number of mesh cells
   int icol = inside.n_cols;
-  double euc_rate = sd * sd / (2 * dx * dx)
-  //arma::mat meshdistmat(num_cells(0), num_cells(0), arma::fill::value(dx));
+  double euc_rate = sd * sd / (2 * dx * dx);
   double sum; 
   for (int s = 0; s < num_cells(0); ++s) {
     sum = 0; 
@@ -47,9 +46,9 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
       if (inside(s, i) > -0.5) {
         //rate
         if(is_noneuc) {
-          tpr(s, inside(s, i)) = euc_rate;
-        } else {
           tpr(s, inside(s, i)) = sd * sd / (2 * meshdistmat(s, inside(s, i)) * meshdistmat(s, inside(s, i)));
+        } else {
+          tpr(s, inside(s, i)) = euc_rate;
         }
         
         sum += tpr(s, inside(s, i)); 
@@ -199,6 +198,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
   const int num_states;
   const int minstate; 
   const int maxstate; 
+  const bool is_noneuc;
   const arma::mat meshdistmat;
   const arma::vec entry; 
   
@@ -225,7 +225,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
                 const int num_states,
                 const int minstate, 
                 const int maxstate, 
-                bool is_noneuc,
+                const bool is_noneuc,
                 const arma::mat meshdistmat,
                 const arma::vec entry,
                 arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), is_noneuc(is_noneuc), meshdistmat(meshdistmat), entry(entry), illk(illk) {
@@ -312,11 +312,12 @@ double C_calc_move_llk(const int n, const int Kp,
                        const int num_states,
                        const int minstate, 
                        const int maxstate, 
+                       const bool is_noneuc,
                        const arma::mat meshdistmat,
                        const arma::vec entry) {
   
   arma::vec illk(n);
-  MoveLlkCalculator move_llk_calulator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry, illk); 
+  MoveLlkCalculator move_llk_calulator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry, illk); 
   parallelFor(0, n, move_llk_calulator, 10); 
   return(arma::accu(illk)); 
 }
@@ -349,7 +350,7 @@ double C_calc_move_pdet(const int Kp,
                    const int num_states, 
                    const int minstate, 
                    const int maxstate,
-                   bool is_noneuc,
+                   const bool is_noneuc,
                    const arma::mat meshdistmat) {
   
   double pdet = 0; 

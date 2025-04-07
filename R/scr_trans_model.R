@@ -155,6 +155,7 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                                nstates, 
                                0, 
                                0,
+                               private$noneuclidean_,
                                private$meshdistmat_); 
       a <- private$data_$cell_area() 
       D <- self$get_par("D", m = 1:private$data_$n_meshpts()) * a
@@ -203,6 +204,7 @@ ScrTransientModel <- R6Class("ScrTransientModel",
                              nstates, 
                              0, 
                              0,
+                             private$noneuclidean_,
                              private$meshdistmat_,
                              rep(0, private$data_$n()))
       # compute log-likelihood
