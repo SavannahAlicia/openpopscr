@@ -40,22 +40,33 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
   int icol = inside.n_cols;
   double euc_rate = sd * sd / (2 * dx * dx);
   double sum; 
-  for (int s = 0; s < num_cells(0); ++s) {
-    sum = 0; 
-    for (int i = 0; i < icol; ++i) {
-      if (inside(s, i) > -0.5) {
-        //rate
-        if(is_noneuc) {
+  
+  if(is_noneuc){
+    //nonEuclidean rate based on distance
+    for (int s = 0; s < num_cells(0); ++s) {
+      sum = 0; 
+      for (int i = 0; i < icol; ++i) {
+        if (inside(s, i) > -0.5) {
           tpr(s, inside(s, i)) = sd * sd / (2 * meshdistmat(s, inside(s, i)) * meshdistmat(s, inside(s, i)));
-        } else {
-          tpr(s, inside(s, i)) = euc_rate;
+          sum += tpr(s, inside(s, i)); 
         }
-        
-        sum += tpr(s, inside(s, i)); 
       }
+      tpr(s, s) = -sum; 
     }
-    tpr(s, s) = -sum; 
+  } else {
+    //skip calculation if Euclidean
+    for (int s = 0; s < num_cells(0); ++s) {
+      sum = 0; 
+      for (int i = 0; i < icol; ++i) {
+        if (inside(s, i) > -0.5) {
+          tpr(s, inside(s, i)) = euc_rate; 
+          sum += tpr(s, inside(s, i)); 
+        }
+      }
+      tpr(s, s) = -sum; 
+    }
   }
+
   return tpr;
 }
 
