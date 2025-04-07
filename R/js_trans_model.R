@@ -176,6 +176,7 @@ JsTransientModel <- R6Class("JsTransientModel",
                                nstates + 2,
                                1, 
                                1,
+                               private$noneuclidean_,
                                private$meshdistmat_) 
       a <- private$data_$cell_area()
       D <- self$get_par("D", m = 1:private$data_$n_meshpts()) * a
@@ -224,6 +225,7 @@ JsTransientModel <- R6Class("JsTransientModel",
                              nstates,
                              1, 
                              1,
+                             private$noneuclidean_,
                              private$meshdistmat_,
                              rep(0, private$data_$n()))
       # compute log-likelihood

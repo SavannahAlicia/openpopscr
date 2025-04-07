@@ -81,8 +81,8 @@ C_calc_move_llk <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx,
 #'
 #' @return pdet = probability seen at some time on the survey 
 #' 
-C_calc_move_pdet <- function(Kp, pr0, pr_captures, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat) {
-    .Call(`_openpopscr_C_calc_move_pdet`, Kp, pr0, pr_captures, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat)
+C_calc_move_pdet <- function(Kp, pr0, pr_captures, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat) {
+    .Call(`_openpopscr_C_calc_move_pdet`, Kp, pr0, pr_captures, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat)
 }
 
 #' Computes probability of each capture record
@@ -159,8 +159,8 @@ C_calc_beta <- function(n, J, M, pr0, pr_capture, tpms, num_states, entry) {
 #'
 #' @return forwards probabiltiies individual x occasion x mesh x state
 #' 
-C_calc_movealpha <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry) {
-    .Call(`_openpopscr_C_calc_movealpha`, n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry)
+C_calc_movealpha <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry) {
+    .Call(`_openpopscr_C_calc_movealpha`, n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry)
 }
 
 #' Computes backward probabilities
@@ -180,7 +180,7 @@ C_calc_movealpha <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx
 #'
 #' @return backwards probabiltiies individual x occasion x mesh x state 
 #' 
-C_calc_movebeta <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry) {
-    .Call(`_openpopscr_C_calc_movebeta`, n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry)
+C_calc_movebeta <- function(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry) {
+    .Call(`_openpopscr_C_calc_movebeta`, n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry)
 }
 

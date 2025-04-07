@@ -29,23 +29,16 @@
 
 using namespace RcppParallel; 
 
-//'
- //' @param num_cells vector length 3, first entry is how many mesh 
- //' @param sd movement parameter for each occasion
- //' @param dx mesh spacing
- //' @param inside matrix of which cells are closeby 
- //' @param meshdistmat distances between mesh  
- //'
- //' @return transition rate matrix 
- //' 
- // [[Rcpp::export]]
+
 arma::sp_mat CalcTrm(const arma::vec num_cells, 
                      const double sd, 
                      const double dx, 
                      const arma::mat inside,
+                     bool is_noneuc,
                      const arma::mat meshdistmat) {
   arma::sp_mat tpr = arma::zeros<arma::sp_mat>(num_cells(0), num_cells(0)); //sparse square matrix, dim number of mesh cells
   int icol = inside.n_cols;
+  double euc_rate = sd * sd / (2 * dx * dx)
   //arma::mat meshdistmat(num_cells(0), num_cells(0), arma::fill::value(dx));
   double sum; 
   for (int s = 0; s < num_cells(0); ++s) {
@@ -53,7 +46,12 @@ arma::sp_mat CalcTrm(const arma::vec num_cells,
     for (int i = 0; i < icol; ++i) {
       if (inside(s, i) > -0.5) {
         //rate
-        tpr(s, inside(s, i)) = sd * sd / (2 * meshdistmat(s, inside(s, i)) * meshdistmat(s, inside(s, i)));
+        if(is_noneuc) {
+          tpr(s, inside(s, i)) = euc_rate;
+        } else {
+          tpr(s, inside(s, i)) = sd * sd / (2 * meshdistmat(s, inside(s, i)) * meshdistmat(s, inside(s, i)));
+        }
+        
         sum += tpr(s, inside(s, i)); 
       }
     }
@@ -227,9 +225,10 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
                 const int num_states,
                 const int minstate, 
                 const int maxstate, 
+                bool is_noneuc,
                 const arma::mat meshdistmat,
                 const arma::vec entry,
-                arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), meshdistmat(meshdistmat), entry(entry), illk(illk) {
+                arma::vec& illk) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), is_noneuc(is_noneuc), meshdistmat(meshdistmat), entry(entry), illk(illk) {
     if (num_states > 1) {
       tpm.resize(Kp);  //length of vector (of matrices)
       for (int kp = 0; kp < Kp - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
@@ -240,7 +239,7 @@ struct MoveLlkCalculator : public Worker { //inherits parallelization
       for (int g = minstate; g < minstate + alivestates; ++g) {
         if (sd(kp, g - minstate) < 0) continue; 
         //trm is vector of matrices
-        trm[g - minstate + kp * alivestates] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, meshdistmat);  //returns m x m sparse rate matrix
+        trm[g - minstate + kp * alivestates] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, is_noneuc, meshdistmat);  //returns m x m sparse rate matrix
       }
     }
     pr_cap.resize(n); //vector of cubes
@@ -350,6 +349,7 @@ double C_calc_move_pdet(const int Kp,
                    const int num_states, 
                    const int minstate, 
                    const int maxstate,
+                   bool is_noneuc,
                    const arma::mat meshdistmat) {
   
   double pdet = 0; 
@@ -370,7 +370,7 @@ double C_calc_move_pdet(const int Kp,
     }
     for (int g = minstate; g < minstate + alivestates; ++g) {
       if (sd(kp, g - minstate) < 0) continue; 
-      trm = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, meshdistmat);
+      trm = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, is_noneuc, meshdistmat);
       try {
         pr.col(g) = ExpG(pr.col(g), trm, dt(kp)); 
       } catch(...) {

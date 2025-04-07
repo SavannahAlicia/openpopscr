@@ -51,6 +51,7 @@ struct AlphaMoveCalculator : public Worker {
   const int num_states;
   const int minstate; 
   const int maxstate; 
+  bool is_noneuc;
   const arma::mat meshdistmat; 
   const arma::vec entry; 
   
@@ -75,9 +76,10 @@ struct AlphaMoveCalculator : public Worker {
                       const int num_states,
                       const int minstate, 
                       const int maxstate, 
+                      bool is_noneuc,
                       const arma::mat meshdistmat,
                       const arma::vec entry,
-                      arma::field<arma::cube>& lalpha) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), meshdistmat(meshdistmat), entry(entry), lalpha(lalpha) {
+                      arma::field<arma::cube>& lalpha) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), is_noneuc(is_noneuc), meshdistmat(meshdistmat), entry(entry), lalpha(lalpha) {
     if (num_states > 1) {
       tpm.resize(Kp); 
       for (int kp = 0; kp < Kp - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
@@ -86,7 +88,7 @@ struct AlphaMoveCalculator : public Worker {
     for (int kp = 0; kp < Kp - 1; ++kp) {
       for (int g = minstate; g < minstate + num_states; ++g) {
         if (sd(kp, g - minstate) < 0) continue; 
-        trm[g - minstate + kp * num_states] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, meshdistmat); 
+        trm[g - minstate + kp * num_states] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, is_noneuc, meshdistmat); 
       }
     }
     pr_cap.resize(n);
@@ -162,12 +164,13 @@ arma::field<arma::cube> C_calc_movealpha(const int n, const int Kp,
                                          const int num_states,
                                          const int minstate, 
                                          const int maxstate, 
+                                         bool is_noneuc,
                                          const arma::mat meshdistmat,
                                          const arma::vec entry) {
   
   arma::field<arma::cube> lalpha(n);
   for (int i = 0; i < n; ++i) lalpha(i) = arma::zeros<arma::cube>(num_cells(0), num_states, Kp); 
-  AlphaMoveCalculator alpha_calculator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry, lalpha); 
+  AlphaMoveCalculator alpha_calculator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry, lalpha); 
   parallelFor(0, n, alpha_calculator, 1); 
   return(lalpha); 
 }
@@ -188,6 +191,7 @@ struct BetaMoveCalculator : public Worker {
   const int num_states;
   const int minstate; 
   const int maxstate; 
+  bool is_noneuc;
   const arma::mat meshdistmat;
   const arma::vec entry; 
   
@@ -212,9 +216,10 @@ struct BetaMoveCalculator : public Worker {
                      const int num_states,
                      const int minstate, 
                      const int maxstate, 
+                     bool is_noneuc,
                      const arma::mat meshdistmat,
                      const arma::vec entry,
-                     arma::field<arma::cube>& lbeta) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), meshdistmat(meshdistmat), entry(entry), lbeta(lbeta) {
+                     arma::field<arma::cube>& lbeta) : n(n), Kp(Kp), pr0(pr0), pr_capture(pr_capture), tpms(tpms), num_cells(num_cells), inside(inside), dx(dx), dt(dt), sd(sd), num_states(num_states), minstate(minstate), maxstate(maxstate), is_noneuc(is_noneuc), meshdistmat(meshdistmat), entry(entry), lbeta(lbeta) {
     if (num_states > 1) {
       tpm.resize(Kp); 
       for (int kp = 0; kp < Kp - 1; ++kp) tpm[kp] = Rcpp::as<arma::mat>(tpms[kp]); 
@@ -223,7 +228,7 @@ struct BetaMoveCalculator : public Worker {
     for (int kp = 0; kp < Kp - 1; ++kp) {
       for (int g = minstate; g < minstate + num_states; ++g) {
         if (sd(kp, g - minstate) < 0) continue; 
-        trm[g - minstate + kp * num_states] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, meshdistmat); 
+        trm[g - minstate + kp * num_states] = CalcTrm(num_cells, sd(kp, g - minstate), dx, inside, is_noneuc, meshdistmat); 
         trm[g - minstate + kp * num_states].t(); 
       }
     }
@@ -298,12 +303,13 @@ arma::field<arma::cube> C_calc_movebeta(const int n,
                                         const int num_states,
                                         const int minstate, 
                                         const int maxstate, 
+                                        bool is_noneuc,
                                         const arma::mat meshdistmat,
                                         const arma::vec entry) {
   
   arma::field<arma::cube> lbeta(n);
   for (int i = 0; i < n; ++i) lbeta(i) = arma::zeros<arma::cube>(num_cells(0), num_states, Kp); 
-  BetaMoveCalculator beta_calculator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry, lbeta); 
+  BetaMoveCalculator beta_calculator(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry, lbeta); 
   parallelFor(0, n, beta_calculator, 1); 
   return(lbeta); 
 }

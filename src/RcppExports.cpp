@@ -84,8 +84,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // C_calc_move_pdet
-double C_calc_move_pdet(const int Kp, arma::mat pr0, Rcpp::List pr_captures, Rcpp::List tpms, const arma::vec num_cells, const arma::mat inside, const double dx, const arma::vec dt, const arma::mat sd, const int num_states, const int minstate, const int maxstate, const arma::mat meshdistmat);
-RcppExport SEXP _openpopscr_C_calc_move_pdet(SEXP KpSEXP, SEXP pr0SEXP, SEXP pr_capturesSEXP, SEXP tpmsSEXP, SEXP num_cellsSEXP, SEXP insideSEXP, SEXP dxSEXP, SEXP dtSEXP, SEXP sdSEXP, SEXP num_statesSEXP, SEXP minstateSEXP, SEXP maxstateSEXP, SEXP meshdistmatSEXP) {
+double C_calc_move_pdet(const int Kp, arma::mat pr0, Rcpp::List pr_captures, Rcpp::List tpms, const arma::vec num_cells, const arma::mat inside, const double dx, const arma::vec dt, const arma::mat sd, const int num_states, const int minstate, const int maxstate, bool is_noneuc, const arma::mat meshdistmat);
+RcppExport SEXP _openpopscr_C_calc_move_pdet(SEXP KpSEXP, SEXP pr0SEXP, SEXP pr_capturesSEXP, SEXP tpmsSEXP, SEXP num_cellsSEXP, SEXP insideSEXP, SEXP dxSEXP, SEXP dtSEXP, SEXP sdSEXP, SEXP num_statesSEXP, SEXP minstateSEXP, SEXP maxstateSEXP, SEXP is_noneucSEXP, SEXP meshdistmatSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -101,8 +101,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type num_states(num_statesSEXP);
     Rcpp::traits::input_parameter< const int >::type minstate(minstateSEXP);
     Rcpp::traits::input_parameter< const int >::type maxstate(maxstateSEXP);
+    Rcpp::traits::input_parameter< bool >::type is_noneuc(is_noneucSEXP);
     Rcpp::traits::input_parameter< const arma::mat >::type meshdistmat(meshdistmatSEXP);
-    rcpp_result_gen = Rcpp::wrap(C_calc_move_pdet(Kp, pr0, pr_captures, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat));
+    rcpp_result_gen = Rcpp::wrap(C_calc_move_pdet(Kp, pr0, pr_captures, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -170,8 +171,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // C_calc_movealpha
-arma::field<arma::cube> C_calc_movealpha(const int n, const int Kp, const arma::mat pr0, const Rcpp::List pr_capture, const Rcpp::List tpms, const arma::vec num_cells, const arma::vec inside, const double dx, const arma::vec dt, const arma::mat sd, const int num_states, const int minstate, const int maxstate, const arma::mat meshdistmat, const arma::vec entry);
-RcppExport SEXP _openpopscr_C_calc_movealpha(SEXP nSEXP, SEXP KpSEXP, SEXP pr0SEXP, SEXP pr_captureSEXP, SEXP tpmsSEXP, SEXP num_cellsSEXP, SEXP insideSEXP, SEXP dxSEXP, SEXP dtSEXP, SEXP sdSEXP, SEXP num_statesSEXP, SEXP minstateSEXP, SEXP maxstateSEXP, SEXP meshdistmatSEXP, SEXP entrySEXP) {
+arma::field<arma::cube> C_calc_movealpha(const int n, const int Kp, const arma::mat pr0, const Rcpp::List pr_capture, const Rcpp::List tpms, const arma::vec num_cells, const arma::vec inside, const double dx, const arma::vec dt, const arma::mat sd, const int num_states, const int minstate, const int maxstate, bool is_noneuc, const arma::mat meshdistmat, const arma::vec entry);
+RcppExport SEXP _openpopscr_C_calc_movealpha(SEXP nSEXP, SEXP KpSEXP, SEXP pr0SEXP, SEXP pr_captureSEXP, SEXP tpmsSEXP, SEXP num_cellsSEXP, SEXP insideSEXP, SEXP dxSEXP, SEXP dtSEXP, SEXP sdSEXP, SEXP num_statesSEXP, SEXP minstateSEXP, SEXP maxstateSEXP, SEXP is_noneucSEXP, SEXP meshdistmatSEXP, SEXP entrySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -188,15 +189,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type num_states(num_statesSEXP);
     Rcpp::traits::input_parameter< const int >::type minstate(minstateSEXP);
     Rcpp::traits::input_parameter< const int >::type maxstate(maxstateSEXP);
+    Rcpp::traits::input_parameter< bool >::type is_noneuc(is_noneucSEXP);
     Rcpp::traits::input_parameter< const arma::mat >::type meshdistmat(meshdistmatSEXP);
     Rcpp::traits::input_parameter< const arma::vec >::type entry(entrySEXP);
-    rcpp_result_gen = Rcpp::wrap(C_calc_movealpha(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry));
+    rcpp_result_gen = Rcpp::wrap(C_calc_movealpha(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry));
     return rcpp_result_gen;
 END_RCPP
 }
 // C_calc_movebeta
-arma::field<arma::cube> C_calc_movebeta(const int n, const int Kp, const arma::mat pr0, const Rcpp::List pr_capture, const Rcpp::List tpms, const arma::vec num_cells, const arma::vec inside, const double dx, const arma::vec dt, const arma::mat sd, const int num_states, const int minstate, const int maxstate, const arma::mat meshdistmat, const arma::vec entry);
-RcppExport SEXP _openpopscr_C_calc_movebeta(SEXP nSEXP, SEXP KpSEXP, SEXP pr0SEXP, SEXP pr_captureSEXP, SEXP tpmsSEXP, SEXP num_cellsSEXP, SEXP insideSEXP, SEXP dxSEXP, SEXP dtSEXP, SEXP sdSEXP, SEXP num_statesSEXP, SEXP minstateSEXP, SEXP maxstateSEXP, SEXP meshdistmatSEXP, SEXP entrySEXP) {
+arma::field<arma::cube> C_calc_movebeta(const int n, const int Kp, const arma::mat pr0, const Rcpp::List pr_capture, const Rcpp::List tpms, const arma::vec num_cells, const arma::vec inside, const double dx, const arma::vec dt, const arma::mat sd, const int num_states, const int minstate, const int maxstate, bool is_noneuc, const arma::mat meshdistmat, const arma::vec entry);
+RcppExport SEXP _openpopscr_C_calc_movebeta(SEXP nSEXP, SEXP KpSEXP, SEXP pr0SEXP, SEXP pr_captureSEXP, SEXP tpmsSEXP, SEXP num_cellsSEXP, SEXP insideSEXP, SEXP dxSEXP, SEXP dtSEXP, SEXP sdSEXP, SEXP num_statesSEXP, SEXP minstateSEXP, SEXP maxstateSEXP, SEXP is_noneucSEXP, SEXP meshdistmatSEXP, SEXP entrySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -213,9 +215,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type num_states(num_statesSEXP);
     Rcpp::traits::input_parameter< const int >::type minstate(minstateSEXP);
     Rcpp::traits::input_parameter< const int >::type maxstate(maxstateSEXP);
+    Rcpp::traits::input_parameter< bool >::type is_noneuc(is_noneucSEXP);
     Rcpp::traits::input_parameter< const arma::mat >::type meshdistmat(meshdistmatSEXP);
     Rcpp::traits::input_parameter< const arma::vec >::type entry(entrySEXP);
-    rcpp_result_gen = Rcpp::wrap(C_calc_movebeta(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, meshdistmat, entry));
+    rcpp_result_gen = Rcpp::wrap(C_calc_movebeta(n, Kp, pr0, pr_capture, tpms, num_cells, inside, dx, dt, sd, num_states, minstate, maxstate, is_noneuc, meshdistmat, entry));
     return rcpp_result_gen;
 END_RCPP
 }

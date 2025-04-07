@@ -29,7 +29,7 @@
 
 using namespace RcppParallel; 
 
-arma::sp_mat CalcTrm(const arma::vec num_cells, const double sd, const double dx, const arma::mat inside, const arma::mat meshdistmat); 
+arma::sp_mat CalcTrm(const arma::vec num_cells, const double sd, const double dx, const arma::mat inside, bool is_noneuc, const arma::mat meshdistmat); 
 arma::vec ExpG(const arma::vec& v_in,
                const arma::sp_mat& a,
                const double& t,
