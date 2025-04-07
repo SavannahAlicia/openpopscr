@@ -75,8 +75,8 @@ ScrData <- R6Class("ScrData",
                           mesh, 
                           time = NULL, 
                           primary = NULL,
-                          userdistmat = NULL,
-                          usermeshdistmat = NULL) {
+                          userdm = NULL,
+                          usermeshdm = NULL) {
       private$check_input(capthist, mesh, time, primary) 
       ## detectors
       private$detector_type_ <- switch(attr(traps(capthist), "detector")[1], 
@@ -150,13 +150,16 @@ ScrData <- R6Class("ScrData",
       private$cov_type_ <- c(private$cov_type_, "m")
       if (!(private$detector_type_ %in% 1:7)) stop("Detector type not implemented.")
 
-      if (is.null(userdistmat)){
+      if (is.null(userdm)){
         ## compute distance trap-to-mesh
         self$calc_distances()
+        private$userdistmat_ <- NULL
       } else {
-        private$distances_ <- userdistmat
+        private$distances_ <- userdm
+        private$userdistmat_ <- userdm
       }
-      private$usermeshdistmat_ <- usermeshdistmat
+      private$usermeshdistmat_ <- usermeshdm
+      #Should probably add a check that user dist mats are correct dimension
       
        
 
@@ -283,7 +286,7 @@ ScrData <- R6Class("ScrData",
     cell_area = function() {return(attributes(private$mesh_)$area * 0.01)}, 
     distances = function(){return(private$distances_)},
     imesh = function(){return(private$imesh_)}, 
-    userdistmat = function(){return(private$distances_)},
+    userdistmat = function(){return(private$userdistmat_)},
     usermeshdistmat = function(){return(private$usermeshdistmat_)},
     
     #### SUMMARY STATISTICS 
@@ -413,6 +416,7 @@ ScrData <- R6Class("ScrData",
     cov_ = NULL, # list of covariates 
     cov_type_ = NULL, # type of each covariate in cov_ list 
     distances_ = NULL, # matrix of distances from trap to mesh 
+    userdistmat_ = NULL,
     usermeshdistmat_ = NULL,
     detector_type_ = NULL, # type of detectors as integer (see initialize)
     primary_ = NULL, # vector of indices for each occasion indexing what primary it belongs to

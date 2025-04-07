@@ -143,7 +143,7 @@ JsTransientModel <- R6Class("JsTransientModel",
         n_primary <- n_occasions
         S <- rep(1, n_occasions)
       }
-      enc_rate <- self$encrate()
+      enc_rate <- self$encrate() #m x j x k
       trap_usage <- usage(private$data_$traps())
       pr_empty <- list()
       j <- 0 
@@ -170,13 +170,13 @@ JsTransientModel <- R6Class("JsTransientModel",
                                tpms, 
                                private$num_cells_,
                                private$inside_, 
-                               private$dx, # was private$dx_, # make this a meshdistmat
+                               private$dx_, 
                                dt, 
                                sd,
                                nstates + 2,
                                1, 
                                1,
-                               private$meshdistmat_); 
+                               private$meshdistmat_) 
       a <- private$data_$cell_area()
       D <- self$get_par("D", m = 1:private$data_$n_meshpts()) * a
       Dpdet <- sum(D) - Dpdet

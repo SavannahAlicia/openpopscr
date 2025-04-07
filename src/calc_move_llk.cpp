@@ -29,6 +29,16 @@
 
 using namespace RcppParallel; 
 
+//'
+ //' @param num_cells vector length 3, first entry is how many mesh 
+ //' @param sd movement parameter for each occasion
+ //' @param dx mesh spacing
+ //' @param inside matrix of which cells are closeby 
+ //' @param meshdistmat distances between mesh  
+ //'
+ //' @return transition rate matrix 
+ //' 
+ // [[Rcpp::export]]
 arma::sp_mat CalcTrm(const arma::vec num_cells, 
                      const double sd, 
                      const double dx, 
