@@ -69,7 +69,7 @@
 #'  \item remove_covariate(covariate_name): remove covariate from data object
 #' }
 #' 
-ScrData <- R6Class("ScrDataMovingDetector", 
+ScrData <- R6Class("ScrDataMovDet", 
                    inherit = ScrModel,
   public = list( 
     initialize = function(capthist, 
