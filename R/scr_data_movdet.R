@@ -177,50 +177,7 @@ ScrData <- R6Class("ScrDataMovingDetector",
     
     #### SUMMARY STATISTICS 
 
-
     #### FUNCTIONS 
-     
-    set_ibuffer = function(ibuffer) {
-      private$ibuf_ <- ibuffer
-      private$make_imesh() 
-    }, 
-    
-    calc_distances = function() {
-      private$distances_ <- t(apply(self$traps(), 1, private$dist_to_row))
-    }, 
-        
-    add_covariate = function(cov_name, cov, cov_type) {
-      names <- names(private$cov_)
-      ncov <- length(private$cov_)
-      if (!is.character(cov_name)) stop("Covariate name must be a character string.")
-      if (cov_name %in% names) stop("Covariate with that name already exists.")
-      if (!(cov_type %in% c("i", "ik", "j", "k", "kj", "km", "p", "pm", "m"))) stop("Invalid covariate type.")
-      if (!(cov_type %in% c("i", "ik"))) {
-        if (!is.factor(cov) & !is.numeric(cov)) stop("Invalid covariate, must be factor or numeric.")
-      }
-      if (cov_type == "i") if (length(cov) != self$n()) stop("Invalid covariate.")
-      if (cov_type == "ik") if (nrow(cov) != self$n() || ncol(cov) != self$n_occasions()) stop("Invalid covariate.")
-      if ("i" %in% private$cov_type_ || "ik" %in% private$cov_type_) stop("Can only have one known state covariate.")
-      if (cov_type == "j") if (length(cov) != self$n_traps()) stop("Invalid covariate.")
-      if (cov_type == "k") if (length(cov) != self$n_occasions("all")) stop("Invalid covariate.")
-      if (cov_type == "kj") if (nrow(cov) != self$n_occasions("all") || ncol(cov) != self$n_traps()) stop("Invalid covariate.")
-      if (cov_type == "p") if (length(cov) != self$n_occasions()) stop("Invalid covariate.")
-      if (cov_type == "pm") if (nrow(cov) != self$n_occasions() || ncol(cov) != self$n_meshpts()) stop("Invalid covariate.")
-      if (cov_type == "km") if (nrow(cov) != self$n_occasions() || ncol(cov) != self$n_meshpts()) stop("Invalid covariate.")
-      if (cov_type == "m") if (length(cov) != self$n_meshpts()) stop("Invalid covariate.")
-      private$cov_[[ncov + 1]] <- cov 
-      names(private$cov_) <- c(names, cov_name)
-      private$cov_type_ <- c(private$cov_type_, cov_type)
-    },
-    
-    remove_covariate = function(cov_name) {
-      names <- names(self$covs())
-      id <- which(names == cov_name)
-      if (length(id) == 0) stop("No covariates with that name.")
-      private$cov_ <- subset(private$cov_, names != cov_name)
-      names(private$cov_) <- names[-id]
-      private$cov_type_ <- private$cov_type_[-id]
-    }
     
   ), 
   
@@ -243,33 +200,6 @@ ScrData <- R6Class("ScrDataMovingDetector",
     induse_ = NULL, # individual trap usage from moving detector
     
     #### FUNCTIONS
-    
-    # used to compute distances from trap-to-mesh 
-    dist_to_row = function(r) {
-      dist <- function(r2) {
-        sqrt(sum((r2 - r)^2))
-      }
-      apply(private$mesh_, 1, dist)
-    }, 
-    
-    # compute imesh centroid-to-mesh distances
-    make_imesh = function() {
-      imesh <- vector(mode = "list", length = self$n())
-      tr <- self$traps()
-      n <- self$n()
-      z <- matrix(0, nr = n, nc = 2)
-      for (i in 1:n) {
-        if (is.null(private$ibuf_)) {
-          imesh[[i]] <- 1:self$n_meshpts() - 1
-        } else {
-          icap <- colSums(self$capthist()[i,,])
-          z[i,] <- colSums(tr * icap / sum(icap))
-          rd <- sqrt((z[i, 1] - self$mesh()[,1])^2 + (z[i, 2] - self$mesh()[,2])^2)
-          imesh[[i]] <- as.numeric(which(rd < private$ibuf_)) - 1
-        }
-      }
-      private$imesh_ <- imesh 
-    },
     
     # check input into intialize 
     check_input = function(capthist, mesh, time, primary, userdm, usermeshdm, induse) {
