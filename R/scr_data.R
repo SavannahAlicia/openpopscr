@@ -490,6 +490,8 @@ ScrData <- R6Class("ScrData",
         if (max(abs(testprim - 1:nprim)) > 0.5) stop("Primary must contain integers 1:maximum primary.")
       }
       if (!is.null(userdm)){
+        warning("When using a user-defined distance matrix, be sure not to change ibuffer.")
+        if(!is.null(private$ibuf_)) stop("Cannot use ibuffer with user distance matrix.")
         if(dim(userdm)[1] != dim(capthist)[3]) stop("Distance matrix dimension 1 must be number of traps.")
         if(dim(userdm)[2] != nrow(mesh)) stop("Distance matrix dimention 2 must be number of mesh points.")
         if(!is.numeric(userdm)) stop("Distance matrix must be numeric.")
