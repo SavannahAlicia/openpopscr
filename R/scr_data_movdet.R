@@ -34,7 +34,9 @@
 #'   \item time: optional vector of numeric time each occasion took place at 
 #'     (used for irregularly spaced occasions). Default is vector 1:n_occasions.
 #'   \item primary: vector with index for each occasion in capthist that pools occasions into primary occasions
-#'   \item userdistmat: user defined non
+#'   \item userdm: user defined nonEuclidean distance matrix from traps to mesh
+#'   \item usermeshdm: user defined nonEuclidean distance matrix from mesh to mesh
+#'   \item induse: individual trap usage (individuals x trap x occasion) up to detection time
 #'        
 #' }
 #' 

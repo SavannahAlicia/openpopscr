@@ -23,7 +23,7 @@
 #' simulates from fitted model. 
 #' \itemize{
 #'   \item form: a named list of formulae for each parameter (~1 for constant)
-#'   \item data: a ScrData object 
+#'   \item data: a ScrData object for moving detectors
 #'   \item start: a named list of starting values 
 #'   \item print (default = TRUE): if TRUE then helpful output is printed to the screen
 #' }
@@ -77,13 +77,15 @@ JsModel <- R6Class("JsModelMovDet",
                        n_traps <- private$data_$n_traps()
                        capthist <- private$data_$capthist()
                        imesh <- private$data_$imesh()
-                       prob <- C_calc_pr_capture(n, 
+                       induse <- private$data_$induse()
+                       prob <- C_calc_pr_capture_movdet(n, 
                                                  n_occasions, 
                                                  n_traps, 
                                                  n_meshpts, 
                                                  capthist, 
                                                  enc_rate0, 
                                                  trap_usage, 
+                                                 induse,
                                                  nstates, 
                                                  1, 
                                                  1, 
@@ -95,75 +97,6 @@ JsModel <- R6Class("JsModelMovDet",
                                                  imesh, 
                                                  private$data_$capij())
                        return(prob)
-                     },
-                     
-                     calc_Dpdet = function() {
-                       # compute probability of zero capture history 
-                       n_occasions_all <- private$data_$n_occasions("all")
-                       n_occasions <- private$data_$n_occasions() 
-                       nstates <- self$state()$nstates()
-                       n_primary <- private$data_$n_primary()
-                       S <- private$data_$n_secondary()
-                       if (n_primary == 1) {
-                         n_primary <- n_occasions
-                         S <- rep(1, n_occasions)
-                       }
-                       enc_rate <- self$encrate()
-                       trap_usage <- usage(private$data_$traps())
-                       pr_empty <- list()
-                       j <- 0 
-                       for (prim in 1:n_primary) { 
-                         pr_empty[[prim]] <- matrix(1, nr = private$data_$n_meshpts(), nc = nstates + 2)
-                         pr_empty[[prim]][ , -c(1, nstates + 2)] <- 0 
-                         for (s in 1:S[prim]) { 
-                           j <- j + 1
-                           for (g in 1:nstates) {
-                             pr_empty[[prim]][, g + 1] <- pr_empty[[prim]][, g + 1] - t(trap_usage[, j]) %*% t(enc_rate[[g]][,,j]) 
-                           }
-                         }
-                         for (g in 1:nstates) pr_empty[[prim]][, g + 1] <- exp(pr_empty[[prim]][, g + 1])
-                       }
-                       # average over all life histories 
-                       pr0 <- self$calc_initial_distribution()
-                       tpms <- self$calc_tpms()
-                       pdet <- C_calc_pdet(n_occasions, pr0, pr_empty, tpms, nstates + 2);
-                       a <- private$data_$cell_area() 
-                       D <- self$get_par("D", m = 1:private$data_$n_meshpts()) * a 
-                       Dpdet <- sum(D) - pdet 
-                       return(Dpdet)
-                     },
-
-                     
-                     calc_llk = function(param = NULL, names = NULL) {
-                       if (!is.null(names)) names(param) <- names 
-                       if (!is.null(param)) {
-                         slen <- length(self$state()$par())
-                         param2 <- param 
-                         if (slen > 0) {
-                           ind <- seq(length(param) - slen + 1, length(param))
-                           self$state()$set_par(param[ind])
-                           param2 <- param[-ind]
-                         }
-                         self$set_par(private$convert_vec2par(param2));
-                       }
-                       # compute transition probability matrices
-                       nstates <- self$state()$nstates() + 2
-                       tpms <- self$calc_tpms()
-                       # initial distribution 
-                       pr0 <- self$calc_initial_distribution()
-                       # compute probability of capture histories 
-                       # across all individuals, occasions and traps 
-                       pr_capture <- self$calc_pr_capture()
-                       # compute likelihood for each individual
-                       n <- private$data_$n()
-                       n_occasions <- private$data_$n_occasions()
-                       n_meshpts <- private$data_$n_meshpts() 
-                       llk <- C_calc_llk(n, n_occasions, n_meshpts, pr0, pr_capture, tpms, nstates, rep(0, private$data_$n()))
-                       # compute log-likelihood
-                       llk <- llk - n * log(self$calc_Dpdet())
-                       llk <- llk + self$calc_D_llk()
-                       if(private$print_) cat("llk:", llk, "\n")
-                       return(llk)
                      }
                      
                    ),
