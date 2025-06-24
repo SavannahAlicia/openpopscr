@@ -41,7 +41,7 @@ struct PrCaptureCalculator : public Worker {
   const int M; // number of mesh points 
   const int alive_col; // column that contains alive state 
   const arma::cube& capthist; // capthist history records: individuals x occasion x trap 
-  const Rcpp::List enc; // encounter rate: occasion x mesh point x trap
+  const Rcpp::List enc; // encounter rate: mesh point x trap x occasion
   const arma::mat& usage; // usage of traps: trap x occasion 
   const int num_states; // number of hidden states in life history model 
   const arma::cube& known_state; // -1 if known not to be in that state 
