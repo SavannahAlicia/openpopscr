@@ -61,6 +61,7 @@ struct PrCaptureCalculator : public Worker {
   std::vector<arma::mat> log_total_penc; 
   std::vector<arma::cube> logenc0; 
   std::vector<arma::cube> log_penc; 
+  arma::mat logusage;
 
   // output 
   // capture probability for record of individual x occasion x mesh point
@@ -132,6 +133,7 @@ struct PrCaptureCalculator : public Worker {
         log_total_enc[g] = log(total_enc[g]); 
         log_total_penc[g] = 1.0 - exp(-total_enc[g]); 
         log_total_penc[g] = log(log_total_penc[g] + 1e-16); 
+        logusage = log(usage + 1e-16);
       } else if (detector_type == 2) {
         // proximity detector: 
         //  log_penc: log-probability seen at some point mesh point x trap x occasion 
@@ -147,7 +149,7 @@ struct PrCaptureCalculator : public Worker {
           }
         }
       }
-      // log encounter rate occasion x mesh point x trap
+      // log encounter rate mesh x trap x occasion
       logenc0.resize(num_states);
       logenc0[g] = log(enc0[g]); 
     }
@@ -196,8 +198,8 @@ struct PrCaptureCalculator : public Worker {
                   if(capij(i,j) > -1) unseen = false; 
                   sumcap = capij(i, j) > -1 ? 1 : 0; 
                   if (capij(i, j) > -1) {
-                    savedenc = logenc0[g].slice(j).col(capij(i, j));   
-                    for (int m = 0; m < imesh(i).size(); ++m) probfield(i)(imesh(i)(m), gp, prim) += savedenc(imesh(i)(m)) - sumcap * log_total_enc[g](imesh(i)(m), j); 
+                    savedenc = logenc0[g].slice(j).col(capij(i, j)) + logusage(capij(i,j), j); //  
+                    for (int m = 0; m < imesh(i).size(); ++m) probfield(i)(imesh(i)(m), gp, prim) += savedenc(imesh(i)(m)) - sumcap * log_total_enc[g](imesh(i)(m), j); //competing hazard
                   }
                   for (int m = 0; m < imesh(i).size(); ++m) probfield(i)(imesh(i)(m), gp, prim) += -(1.0 - sumcap) * total_enc[g](imesh(i)(m), j) + sumcap * log_total_penc[g](imesh(i)(m), j); 
                 }
