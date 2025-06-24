@@ -108,6 +108,30 @@ C_calc_pr_capture <- function(n, J, K, M, capthist, enc0, usage, num_states, min
     .Call(`_openpopscr_C_calc_pr_capture`, n, J, K, M, capthist, enc0, usage, num_states, minstate, maxstate, known_state, detector_type, n_prim, S, entry, imesh, capij)
 }
 
+#' Computes probability of each capture record
+#'
+#' @param n number of individuals 
+#' @param K total number of occasions 
+#' @param J total number of traps ever used  
+#' @param M total number of mesh points
+#' @param capthist capthist array 
+#' @param enc0 encounter rate array, see calc_pr_capture() in JsModel
+#' @param usage matrix with J x K where (j,k) entry is usage of trap j in occasion k
+#' @param induse matrix with individuals x trap x occasion where (i,j,k) is usage by ind i
+#' @param num_states number of alive states 
+#' @param minstate number of states before alive (Scr,Cjs = 0, JS = 1)
+#' @param maxstate number of states after alive (Scr = 0, Cjs/js = 1)
+#' @param detector_type 1 = count, 2 = proximity/binary, 3 = multi-catch, 4 = transect 
+#' @param n_prim number of primary occasions 
+#' @param S number of secondary occasions per primary occasion 
+#' @param entry occasion each individual entered survey 
+#'
+#' @return  Array with (i,k,m) entry the probability of capture record for individual i in occasion k given activity centre at mesh point m  
+#' 
+C_calc_pr_capture_movdet <- function(n, K, J, M, capthist, enc0, usage, induse, num_states, minstate, maxstate, known_state, detector_type, n_prim, S, entry, imesh, capik) {
+    .Call(`_openpopscr_C_calc_pr_capture_movdet`, n, K, J, M, capthist, enc0, usage, induse, num_states, minstate, maxstate, known_state, detector_type, n_prim, S, entry, imesh, capik)
+}
+
 #' Computes forward probabilities
 #'
 #' @param n number of individuals 

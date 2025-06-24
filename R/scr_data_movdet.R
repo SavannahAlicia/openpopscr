@@ -34,7 +34,9 @@
 #'   \item time: optional vector of numeric time each occasion took place at 
 #'     (used for irregularly spaced occasions). Default is vector 1:n_occasions.
 #'   \item primary: vector with index for each occasion in capthist that pools occasions into primary occasions
-#'   \item userdistmat: user defined non
+#'   \item userdm: user defined nonEuclidean distance matrix from traps to mesh
+#'   \item usermeshdm: user defined nonEuclidean distance matrix from mesh to mesh
+#'   \item induse: individual trap usage (individuals x trap x occasion) up to detection time
 #'        
 #' }
 #' 
@@ -69,15 +71,17 @@
 #'  \item remove_covariate(covariate_name): remove covariate from data object
 #' }
 #' 
-ScrData <- R6Class("ScrData", 
+ScrData <- R6Class("ScrDataMovDet", 
+                   inherit = ScrModel,
   public = list( 
     initialize = function(capthist, 
                           mesh, 
                           time = NULL, 
                           primary = NULL,
                           userdm = NULL,
-                          usermeshdm = NULL) {
-      private$check_input(capthist, mesh, time, primary, userdm, usermeshdm) 
+                          usermeshdm = NULL,
+                          induse = NULL) {
+      private$check_input(capthist, mesh, time, primary, userdm, usermeshdm, induse) 
       ## detectors
       private$detector_type_ <- switch(attr(traps(capthist), "detector")[1], 
                                        count = 1, 
@@ -159,6 +163,7 @@ ScrData <- R6Class("ScrData",
         private$userdistmat_ <- userdm
       }
       private$usermeshdistmat_ <- usermeshdm
+      private$induse_ <- induse
        
 
       ## compute distance centroid-to-mesh
@@ -168,255 +173,13 @@ ScrData <- R6Class("ScrData",
     
     #### OUTPUT FUNCTIONS 
     
-    print = function(i = ".") {
-       plot(self$mesh())
-       varycol <- ifelse(self$n() > 1000, FALSE, TRUE)
-       plot(self$capthist(i), add = T, varycol = varycol)
-       plot(self$traps(), add = T)
-       print(summary(self$capthist())[[4]])
-    },
-    
-    plot_mesh = function(cov = NULL, nbreaks = 10, ...) {
-      mesh <- self$mesh()
-      mesh[,1] <- scale(mesh[,1], scale = F)
-      mesh[,2] <- scale(mesh[,2], scale = F)
-      meshdat <- data.frame(x = mesh[,1], y = mesh[,2])
-      var <- NULL
-      if (!is.null(cov)) {
-        if (is.character(cov)) {
-          nmesh <- self$n_meshpts()
-          if (cov %in% names(self$covs())) {
-            f <- which(names(self$covs()) == cov) 
-            if (!grepl("m", private$cov_type_[f])) stop ("Covariate must be spatial.")
-            var <- self$covs()[cov][[1]]
-            name <- cov 
-          }
-        } else {
-          var <- cov 
-          name <- ""
-        }
-        if (is.factor(var)) nbreaks <- nlevels(var)
-        fvar <- cut(as.numeric(var), breaks = nbreaks)
-        mesh$fvar <- fvar
-      }
-      if (is.factor(var)) {
-        plt <- ggplot(meshdat) + geom_point(aes(x = x, y = y, col = fvar), ...) + 
-          scale_color_viridis_d("Legend", labels = levels(var)) 
-      } else if (!is.null(var)) {
-        plt <- ggplot(meshdat) + geom_point(aes(x = x, y = y, col = fvar), ...) + 
-          scale_color_viridis_d("Value", labels = levels(fvar)) 
-      } else {
-        plt <- ggplot(meshdat) + geom_point(aes(x = x, y = y), col = "grey", ...) +
-          theme(legend.position = "none")
-      }
-      plt <- plt + theme_bw()
-      return(plt)
-    }, 
-
     #### ACCESSORS 
-      
-    capthist = function(i = ".") {
-      if (i == ".") return(private$capthist_)
-      return(subset(private$capthist_, occasion = i))
-    },
-    capij = function() {return(private$capij_)},
-    traps = function(i = ".") {
-      if (i == ".") return(traps(private$capthist_))
-     return(traps(subset(private$capthist_, occasion = i)))
-    },
-    mesh = function() {return(private$mesh_)},
-    time = function() {return(private$time_)},
-    detector_type = function() {return(private$detector_type_)}, 
-    get_cov_list = function() {return(list(cov = private$cov_, cov_type = private$cov_type_))}, 
-    
-    covs = function(j = NULL, k = NULL, m = NULL, p = NULL, i = NULL) {
-      if (any(is.null(j))) j0 <- seq(1, self$n_traps()) else j0 <- j
-      if (any(is.null(k))) k0 <- seq(1, self$n_occasions("all")) else k0 <- k 
-      if (any(is.null(m))) m0 <- seq(1, self$n_meshpts()) else m0 <- m 
-      if (any(is.null(p))) p0 <- seq(1, self$n_occasions()) else p0 <- p 
-      if (any(is.null(i))) i0 <- 1 else i0 <- i 
-      if (!is.null(i) && length(i) > 1) stop("For covs(), arguument i must be a single integer.")
-      if (!is.null(i) && length(k) > 1) stop("For covs(), argument k must be a single integer when i is used.")
-      dat <- lapply(1:length(private$cov_), FUN =  function(c) {
-        switch(private$cov_type_[c], 
-               j = private$cov_[[c]][j0], 
-               k = private$cov_[[c]][k0],
-               p = private$cov_[[c]][p0], 
-               m = private$cov_[[c]][m0], 
-               kj = private$cov_[[c]][k0, j0],
-               km = private$cov_[[c]][k0, m0],
-               pm = private$cov_[[c]][p0, m0], 
-               i = private$cov_[[c]][i0], 
-               ik = private$cov__[[c]][i0, k0], 
-               private$cov_[[c]])
-      })
-      names(dat) <- names(private$cov_)
-      return(dat)
-    }, 
-    
-    n = function(i = ".") {
-      if (i == ".") return(dim(private$capthist_)[1])
-      return(dim(subset(private$capthist_, occasion = i))[1])
-    },
-    n_occasions = function(i = NULL) {
-      if (!is.null(i)) {
-        if (i == "all") {
-          return(dim(private$capthist_)[2])
-        } else {
-          return(sum(self$primary() == i))
-        }
-      } else {
-        return(private$n_occasions_)
-      }
-    },
-    n_traps = function() {
-      # number of transects
-      if (private$detector_type_ %in% 4:7) {
-        return(length(unique(attr(traps(private$capthist_),"polyID"))))
-      }
-      return(dim(private$capthist_)[3])
-    }, 
-    n_meshpts = function() {return(dim(private$mesh_)[1])},
-    n_primary = function() {return(private$n_primary_)}, 
-    n_secondary = function() {return(as.numeric(table(self$primary())))}, 
-    primary = function() {return(private$primary_)},
-    area = function() {return(self$n_meshpts() * attributes(private$mesh_)$area * 0.01)},
-    cell_area = function() {return(attributes(private$mesh_)$area * 0.01)}, 
-    distances = function(){return(private$distances_)},
-    imesh = function(){return(private$imesh_)}, 
-    userdistmat = function(){return(private$userdistmat_)},
-    usermeshdistmat = function(){return(private$usermeshdistmat_)}
+ 
+    induse = function(){return(private$induse_)}
     
     #### SUMMARY STATISTICS 
-    
-    encrate = function(each = FALSE) {
-      ndet <- as.numeric(summary(self$capthist())[[4]][6,1:self$n_occasions("all")])
-      nind <- as.numeric(summary(self$capthist())[[4]][1,1:self$n_occasions("all")])
-      enc <- ndet/nind
-      if (each) {
-        return(enc)
-      } else {
-        return(mean(enc))
-      }
-      return(rate)
-    },
-    encrange = function(k = NULL, each = FALSE) {
-      if (is.null(k)) k <- seq(1, self$n_occasions())
-      if (!each | length(k) == 1) {
-        if (private$n_primary_ == 1) {
-          subcap <- subset(self$capthist(), occasions = k)
-        } else {
-          wh <- which(self$primary() %in% k) 
-          subcap <- subset(self$capthist(), occasions = wh)
-        }
-        return(RPSV(subcap))
-      } else {
-        if (private$n_primary_ == 1) {
-          range <- numeric(length(k))
-          for (i in seq(k)) range[i] <- RPSV(subset(self$capthist(), occasions = k[i]))
-        } else {
-          range <- numeric(length(k))
-          for (i in seq(k)) range[i] <- RPSV(self$capthist(i))
-        }
-        return(range)
-      }
-    },
-    unique = function() {
-      return(as.numeric(summary(self$capthist())[[4]][2,1:self$n_occasions("all")]))
-    },
-    
+
     #### FUNCTIONS 
-    replace_mesh = function(newmesh, newuserdistmat = NULL, newusermeshdistmat = NULL,
-                            map = NULL) {
-      if (!("mask" %in% class(newmesh))) stop("Invalid mesh object.")
-      oldmesh <- private$mesh_ 
-      private$mesh_ <- newmesh 
-      if(is.null(newuserdistmat)){
-        self$calc_distances()
-        if(!is.null(self$userdistmat())) warning("Replaced mesh but did not update user defined distance matrix.")
-      } else {
-        olddistmat <- private$userdistmat_
-        private$userdistmat_ <- newuserdistmat
-      }
-      if(is.null(newusermeshdistmat)){
-        if(!is.null(self$usermeshdistmat())) warning("Replaced mesh but did not update user defined mesh distance matrix.")
-      } else {
-        oldmeshdistmat <- private$usermeshdistmat_
-        private$usermeshdistmat_ <- newusermeshdistmat
-      }
-      
-      if (is.null(map)) {
-        warning("Replaced mesh, but did not update mesh covariates. Supply map argument.")
-      } else {
-        cov_list <- self$get_cov_list() 
-        type <- cov_list$cov_type
-        covs <- cov_list$cov
-        nms <- names(covs)
-        nprim <- self$n_occasions()
-        nocc <- self$n_occasions("all")
-        for (i in 1:length(type)) {
-          if (!(type[i] %in% c("pm", "km", "m"))) next 
-          if (type[i] == "m") {
-            newcov <- rep(covs[[i]][1], nrow(newmesh))
-            newcov[map] <- covs[[i]]
-            self$remove_covariate(nms[i])
-            self$add_covariate(nms[i], newcov, type[i])
-          } else if (type[i] == "pm") {
-            newcov <- matrix(covs[[i]][1,1], nr = nprim, nc = nrow(newmesh))
-            newcov[,map] <- covs[[i]]
-            self$remove_covariate(nms[i])
-            self$add_covariate(nms[i], newcov, type[i])
-          } else {
-            newcov <- matrix(covs[[i]][1,1], nr = nocc, nc = nrow(newmesh))
-            newcov[,map] <- covs[[i]]
-            self$remove_covariate(nms[i])
-            self$add_covariate(nms[i], newcov, type[i])
-          }
-        }
-      }
-    }, 
-    
-    set_ibuffer = function(ibuffer) {
-      private$ibuf_ <- ibuffer
-      private$make_imesh() 
-    }, 
-    
-    calc_distances = function() {
-      private$distances_ <- t(apply(self$traps(), 1, private$dist_to_row))
-    }, 
-        
-    add_covariate = function(cov_name, cov, cov_type) {
-      names <- names(private$cov_)
-      ncov <- length(private$cov_)
-      if (!is.character(cov_name)) stop("Covariate name must be a character string.")
-      if (cov_name %in% names) stop("Covariate with that name already exists.")
-      if (!(cov_type %in% c("i", "ik", "j", "k", "kj", "km", "p", "pm", "m"))) stop("Invalid covariate type.")
-      if (!(cov_type %in% c("i", "ik"))) {
-        if (!is.factor(cov) & !is.numeric(cov)) stop("Invalid covariate, must be factor or numeric.")
-      }
-      if (cov_type == "i") if (length(cov) != self$n()) stop("Invalid covariate.")
-      if (cov_type == "ik") if (nrow(cov) != self$n() || ncol(cov) != self$n_occasions()) stop("Invalid covariate.")
-      if ("i" %in% private$cov_type_ || "ik" %in% private$cov_type_) stop("Can only have one known state covariate.")
-      if (cov_type == "j") if (length(cov) != self$n_traps()) stop("Invalid covariate.")
-      if (cov_type == "k") if (length(cov) != self$n_occasions("all")) stop("Invalid covariate.")
-      if (cov_type == "kj") if (nrow(cov) != self$n_occasions("all") || ncol(cov) != self$n_traps()) stop("Invalid covariate.")
-      if (cov_type == "p") if (length(cov) != self$n_occasions()) stop("Invalid covariate.")
-      if (cov_type == "pm") if (nrow(cov) != self$n_occasions() || ncol(cov) != self$n_meshpts()) stop("Invalid covariate.")
-      if (cov_type == "km") if (nrow(cov) != self$n_occasions() || ncol(cov) != self$n_meshpts()) stop("Invalid covariate.")
-      if (cov_type == "m") if (length(cov) != self$n_meshpts()) stop("Invalid covariate.")
-      private$cov_[[ncov + 1]] <- cov 
-      names(private$cov_) <- c(names, cov_name)
-      private$cov_type_ <- c(private$cov_type_, cov_type)
-    },
-    
-    remove_covariate = function(cov_name) {
-      names <- names(self$covs())
-      id <- which(names == cov_name)
-      if (length(id) == 0) stop("No covariates with that name.")
-      private$cov_ <- subset(private$cov_, names != cov_name)
-      names(private$cov_) <- names[-id]
-      private$cov_type_ <- private$cov_type_[-id]
-    }
     
   ), 
   
@@ -436,38 +199,12 @@ ScrData <- R6Class("ScrData",
     n_occasions_ = NULL, # number of occasions
     ibuf_ = NULL, # buffer around individual centroids
     imesh_ = NULL, # mesh points within ibuf_ to each individual's centroid 
+    induse_ = NULL, # individual trap usage from moving detector
     
     #### FUNCTIONS
     
-    # used to compute distances from trap-to-mesh 
-    dist_to_row = function(r) {
-      dist <- function(r2) {
-        sqrt(sum((r2 - r)^2))
-      }
-      apply(private$mesh_, 1, dist)
-    }, 
-    
-    # compute imesh centroid-to-mesh distances
-    make_imesh = function() {
-      imesh <- vector(mode = "list", length = self$n())
-      tr <- self$traps()
-      n <- self$n()
-      z <- matrix(0, nr = n, nc = 2)
-      for (i in 1:n) {
-        if (is.null(private$ibuf_)) {
-          imesh[[i]] <- 1:self$n_meshpts() - 1
-        } else {
-          icap <- colSums(self$capthist()[i,,])
-          z[i,] <- colSums(tr * icap / sum(icap))
-          rd <- sqrt((z[i, 1] - self$mesh()[,1])^2 + (z[i, 2] - self$mesh()[,2])^2)
-          imesh[[i]] <- as.numeric(which(rd < private$ibuf_)) - 1
-        }
-      }
-      private$imesh_ <- imesh 
-    },
-    
     # check input into intialize 
-    check_input = function(capthist, mesh, time, primary, userdm, usermeshdm) {
+    check_input = function(capthist, mesh, time, primary, userdm, usermeshdm, induse) {
       if (!("capthist" %in% class(capthist))) stop("Invalid capture history object.")
       if (!("mask" %in% class(mesh))) stop("Invalid mesh object.")
       if (!is.null(time)) {
@@ -490,8 +227,6 @@ ScrData <- R6Class("ScrData",
         if (max(abs(testprim - 1:nprim)) > 0.5) stop("Primary must contain integers 1:maximum primary.")
       }
       if (!is.null(userdm)){
-        warning("When using a user-defined distance matrix, be sure not to change ibuffer.")
-        if(!is.null(private$ibuf_)) stop("Cannot use ibuffer with user distance matrix.")
         if(dim(userdm)[1] != dim(capthist)[3]) stop("Distance matrix dimension 1 must be number of traps.")
         if(dim(userdm)[2] != nrow(mesh)) stop("Distance matrix dimention 2 must be number of mesh points.")
         if(!is.numeric(userdm)) stop("Distance matrix must be numeric.")
@@ -502,6 +237,13 @@ ScrData <- R6Class("ScrData",
         if(!is.numeric(usermeshdm)) stop("Mesh distance matrix must be numeric.")
         if(!all(diag(meshdist)==0)) stop("Diagonals of mesh distance matrix should be zeros.")
       }
+      if(!is.null(induse)){
+        if(length(dim(induse))!=3) stop("Individual use matrix should be i x j x k dimension.")
+        if(dim(induse)[1] != dim(capthist)[1]) stop("Individual use must be specified for each individual in capture history (first dimension).")
+        if(dim(induse)[2] != dim(capthist)[3]) stop("Individual use must be specified for each trap (second dimension).")
+        if(dim(induse)[3] != dim(capthist)[2]) stop("Individual use must be specified for each secondary occasion (third dimesion).")
+        if(is.null(secr::usage(secr::traps(capthist)))) stop("Trap usage must be specified if also using individual usage matrix.")
+       }
       return(0)
     }
   )
