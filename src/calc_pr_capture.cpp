@@ -231,7 +231,7 @@ struct PrCaptureCalculator : public Worker {
 //' @param M total number of mesh points
 //' @param capthist capthist array 
 //' @param enc0 encounter rate array, see calc_pr_capture() in JsModel
-//' @param usage matrix with J x K where (j,k) entry is usage of trap k in occasion j
+//' @param usage matrix with K x J where (k,j) entry is usage of trap k in occasion j
 //' @param num_states number of alive states 
 //' @param minstate number of states before alive (Scr,Cjs = 0, JS = 1)
 //' @param maxstate number of states after alive (Scr = 0, Cjs/js = 1)
