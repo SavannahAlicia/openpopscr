@@ -77,7 +77,7 @@ ScrData <- R6Class("ScrData",
                           primary = NULL,
                           userdm = NULL,
                           usermeshdm = NULL) {
-      private$check_input(capthist, mesh, time, primary, userdm, usermeshdm) 
+      private$check_input(capthist, mesh, time, primary) 
       ## detectors
       private$detector_type_ <- switch(attr(traps(capthist), "detector")[1], 
                                        count = 1, 
@@ -159,6 +159,8 @@ ScrData <- R6Class("ScrData",
         private$userdistmat_ <- userdm
       }
       private$usermeshdistmat_ <- usermeshdm
+      #Should probably add a check that user dist mats are correct dimension
+      
        
 
       ## compute distance centroid-to-mesh
@@ -326,25 +328,11 @@ ScrData <- R6Class("ScrData",
     },
     
     #### FUNCTIONS 
-    replace_mesh = function(newmesh, newuserdistmat = NULL, newusermeshdistmat = NULL,
-                            map = NULL) {
+    replace_mesh = function(newmesh, map = NULL) {
       if (!("mask" %in% class(newmesh))) stop("Invalid mesh object.")
       oldmesh <- private$mesh_ 
       private$mesh_ <- newmesh 
-      if(is.null(newuserdistmat)){
-        self$calc_distances()
-        if(!is.null(self$userdistmat())) warning("Replaced mesh but did not update user defined distance matrix.")
-      } else {
-        olddistmat <- private$userdistmat_
-        private$userdistmat_ <- newuserdistmat
-      }
-      if(is.null(newusermeshdistmat)){
-        if(!is.null(self$usermeshdistmat())) warning("Replaced mesh but did not update user defined mesh distance matrix.")
-      } else {
-        oldmeshdistmat <- private$usermeshdistmat_
-        private$usermeshdistmat_ <- newusermeshdistmat
-      }
-      
+      self$calc_distances()
       if (is.null(map)) {
         warning("Replaced mesh, but did not update mesh covariates. Supply map argument.")
       } else {
@@ -428,8 +416,8 @@ ScrData <- R6Class("ScrData",
     cov_ = NULL, # list of covariates 
     cov_type_ = NULL, # type of each covariate in cov_ list 
     distances_ = NULL, # matrix of distances from trap to mesh 
-    userdistmat_ = NULL, # user defined distance matrix from traps to mesh
-    usermeshdistmat_ = NULL, # user defined distance matrix from mesh to mesh
+    userdistmat_ = NULL,
+    usermeshdistmat_ = NULL,
     detector_type_ = NULL, # type of detectors as integer (see initialize)
     primary_ = NULL, # vector of indices for each occasion indexing what primary it belongs to
     n_primary_ = NULL, # number of primary occasions
@@ -467,7 +455,7 @@ ScrData <- R6Class("ScrData",
     },
     
     # check input into intialize 
-    check_input = function(capthist, mesh, time, primary, userdm, usermeshdm) {
+    check_input = function(capthist, mesh, time, primary) {
       if (!("capthist" %in% class(capthist))) stop("Invalid capture history object.")
       if (!("mask" %in% class(mesh))) stop("Invalid mesh object.")
       if (!is.null(time)) {
@@ -488,19 +476,6 @@ ScrData <- R6Class("ScrData",
         testprim <- sort(unique(primary))
         if (length(testprim) != nprim) stop("Primary must contain integers 1:maximum primary.")
         if (max(abs(testprim - 1:nprim)) > 0.5) stop("Primary must contain integers 1:maximum primary.")
-      }
-      if (!is.null(userdm)){
-        warning("When using a user-defined distance matrix, be sure not to change ibuffer.")
-        if(!is.null(private$ibuf_)) stop("Cannot use ibuffer with user distance matrix.")
-        if(dim(userdm)[1] != dim(capthist)[3]) stop("Distance matrix dimension 1 must be number of traps.")
-        if(dim(userdm)[2] != nrow(mesh)) stop("Distance matrix dimention 2 must be number of mesh points.")
-        if(!is.numeric(userdm)) stop("Distance matrix must be numeric.")
-      }
-      if (!is.null(usermeshdm)){
-        if(is.null(userdm)) stop("If using a user defined distance matrix for the mesh, you must supply a distance matrix for traps by mesh.")
-        if(dim(usermeshdm)[1] != dim(usermeshdm)[2]) stop("Mesh distance matrix must be a square matrix.")
-        if(!is.numeric(usermeshdm)) stop("Mesh distance matrix must be numeric.")
-        if(!all(diag(meshdist)==0)) stop("Diagonals of mesh distance matrix should be zeros.")
       }
       return(0)
     }
