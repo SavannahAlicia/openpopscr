@@ -119,8 +119,8 @@ struct PrCaptureCalculatorMovDet : public Worker {
       log_total_enc.resize(num_states);
       log_total_penc.resize(num_states);
 
-    } else if (detector_type != 3) {
-      Rcpp::stop("Error: Moving detector likelihood has only been formulated for multi-catch type traps.");
+    } else if (detector_type == 2) {
+      Rcpp::stop("Error: Moving detector likelihood has only been formulated for multi-catch type traps.")
     }
     for (int g = 0; g < num_states; ++g) {
       if (detector_type == 3) { 
@@ -136,7 +136,7 @@ struct PrCaptureCalculatorMovDet : public Worker {
           for (int s = 0; s < S(prim); ++s) {
             ++k;                  //enc0 is mesh x trap x occ
             total_enc[g].col(k) = enc0[g].slice(k) * usage.col(k); //matrix multiplication
-            total_enc_ind[g].slice(k) = enc0[g].slice(k) * induse.slice(k).t();
+            total_enc_ind[g].slice(k) = enc0[g].slice(k) * t(induse.slice(k));
           }
         }
 
@@ -175,8 +175,9 @@ struct PrCaptureCalculatorMovDet : public Worker {
               } else {
                 // state is possible 
                 // independent detectors 
-              //  if (detector_type != 3) {
-                // }
+                if (detector_type != 3) {
+                 Rcpp::stop("Error: Moving detector likelihood has only been formulated for multi-catch type traps.")
+                }
                 // dependent detectors 
                 if (detector_type == 3) {
                   if(capik(i,k) > -1) unseen = false; 
@@ -184,7 +185,7 @@ struct PrCaptureCalculatorMovDet : public Worker {
                   if (capik(i, k) > -1) { //if seen
                     //logenc vector length mesh, induse is single value
                     for (int m = 0; m < imesh(i).size(); ++m) {
-                      savedenc(imesh(i)(m)) = log(1.0 - exp(-enc0[g](m, capik(i, k), k) * induse(i, capik(i, k), k)) + 1e-16);
+                      savedenc(imesh(i)(m)) = log(1.0 - exp(-enc0[g](m, j, k) * induse(i, j, k)) + 1e-16);
                       probfield(i)(imesh(i)(m), gp, prim) += savedenc(imesh(i)(m)) - sumcap * total_enc_ind[g](imesh(i)(m), i, k); // log(exp(-sum(enc*induse))) + log(1-exp(-enc*induse))
                     }
                     }                                                                               //if detected, this term is 0                   
