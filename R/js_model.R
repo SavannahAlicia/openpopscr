@@ -234,6 +234,7 @@ JsModel <- R6Class("JsModel",
     }, 
     
     calc_llk = function(param = NULL, names = NULL) {
+      print("Calculating llk")
       if (!is.null(names)) names(param) <- names 
       if (!is.null(param)) {
         slen <- length(self$state()$par())
