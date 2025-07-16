@@ -73,9 +73,11 @@
 ScrModel <- R6Class("ScrModel", 
   public = list(
     
-    initialize = function(form, data, start, kbuf = 0, detectfn = NULL, statemod = NULL, print = TRUE) {
+    initialize = function(form, data, start, kbuf = 0, detectfn = NULL,
+                          statemod = NULL, print = TRUE, knots = NULL) {
       private$check_input(form, data, start, detectfn, print)
       private$data_ <- data
+      private$knots_ <- knots
       if (print) cat("Reading formulae.......")
       private$read_formula(form, detectfn, statemod)
       # add parameters other than detection 
@@ -489,6 +491,7 @@ ScrModel <- R6Class("ScrModel",
   
   private = list(
     data_ = NULL,
+    knots_ = NULL,
     detfn_ = NULL, 
     state_ = NULL, 
     known_states_ = NULL, 
@@ -545,6 +548,7 @@ ScrModel <- R6Class("ScrModel",
     }, 
     
     make_par = function() {
+      knots <- private$knots_
       samp_cov_jk <- private$data_$covs(m = 1)
       samp_cov_km <- private$data_$covs(j = 1)
       samp_cov_pm <- private$data_$covs(j = 1)
@@ -638,7 +642,7 @@ ScrModel <- R6Class("ScrModel",
         k <- switch(private$par_type_[par], "jk" = 1, "km" = 2, "m" = 3, "k1m" = 4, "kconm" = 4, "jks" = 5, "k1ms" = 6, "kconms" = 6, "pm" = 7, "p1ms" = 8, "pconms" = 8)
         parname <- as.character(private$form_[[par]][[2]])
         names(tempdat[[k]])[parloc[k]] <- parname
-        private$X_[[par]] <- openpopscrgam(private$form_[[par]], data = tempdat[[k]])
+        private$X_[[par]] <- openpopscrgam(private$form_[[par]], data = tempdat[[k]], knots = knots)
         names(private$X_)[[par]] <- parname
         par_vec <- rep(0, ncol(private$X_[[par]]))
         names(par_vec) <- colnames(private$X_[[par]])

@@ -62,9 +62,11 @@ JsModel <- R6Class("JsModel",
                    inherit = ScrModel,
   public = list(
     
-    initialize = function(form, data, start, detectfn = NULL, statemod = NULL, print = TRUE) {
+    initialize = function(form, data, start, detectfn = NULL, 
+                          statemod = NULL, print = TRUE, knots = NULL) {
       private$check_input(form, data, start, detectfn, print)
       private$data_ <- data
+      private$knots_ <- knots
       if (print) cat("Reading formulae.......")
       order <- c("phi", "beta", "D")
       private$read_formula(form, detectfn, statemod, order)
