@@ -1,10 +1,10 @@
 Package: openpopscr
 Type: Package
 Title: Open Population Spatial Capture-Recapture
-Version: 1.2.0
-Author: Richard Glennie <rg374@st-andrews.ac.uk>, David Borchers
-Maintainer: Richard Glennie <rg374@st-andrews.ac.uk>
-Date: 2019-09-10
+Version: 1.3.0
+Author: Richard Glennie <rg374@st-andrews.ac.uk>, Savannah Rogers, David Borchers
+Maintainer: Savannah Rogers <sr244@st-andrews.ac.uk>
+Date: 2025-07-16
 Description: Fits spatial capture-recapture models by maximum likelihood with transience and open populations. 
 License: MIT + file LICENSE
 Depends: R(>= 3.5.0), rmarkdown
